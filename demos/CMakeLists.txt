@@ -16,6 +16,7 @@ FIND_LIBRARY(GFLAGS_LIB NAMES gflags)
 message(STATUS "gflags found =>" "${GFLAGS_LIB}") 
 
 add_subdirectory(../cpp/driver driver)
+add_subdirectory(../../paho.mqtt.c ${CMAKE_CURRENT_BINARY_DIR}/paho.mqtt_build)
 
 add_executable(compass_demo compass_demo.cpp)
   set_property(TARGET compass_demo PROPERTY CXX_STANDARD 11)
@@ -139,4 +140,13 @@ add_executable(uart_demo uart_demo.cpp)
   target_link_libraries(uart_demo matrix_creator_hal)
   target_link_libraries(uart_demo ${CMAKE_THREAD_LIBS_INIT})
   target_link_libraries(uart_demo ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+  
+add_executable(simple_mic_read simple_mic_read.cpp)
+set_property(TARGET simple_mic_read PROPERTY CXX_STANDARD 11)
+target_link_libraries(simple_mic_read matrix_creator_hal)
+target_link_libraries(simple_mic_read ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(simple_mic_read ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+target_link_libraries(simple_mic_read ${GFLAGS_LIB})
+target_link_libraries(simple_mic_read paho-mqttpp3 paho-mqtt3as)
+
 
