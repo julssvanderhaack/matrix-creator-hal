@@ -149,4 +149,12 @@ target_link_libraries(simple_mic_read ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYP
 target_link_libraries(simple_mic_read ${GFLAGS_LIB})
 target_link_libraries(simple_mic_read paho-mqttpp3 paho-mqtt3as)
 
+add_executable(mic_read_filter mic_read_filter.cpp)
+set_property(TARGET mic_read_filter PROPERTY CXX_STANDARD 11)
+target_link_libraries(mic_read_filter matrix_creator_hal)
+target_link_libraries(mic_read_filter ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(mic_read_filter ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+target_link_libraries(mic_read_filter ${GFLAGS_LIB})
+target_link_libraries(mic_read_filter paho-mqttpp3 paho-mqtt3as)
+
 
