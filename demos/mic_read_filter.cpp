@@ -50,13 +50,15 @@ int main(int argc, char *argv[])
 {
     // Parse command line flags with gflags utility
     // (https://gflags.github.io/gflags/)
-    google::ParseCommandLineFlags(&argc, &agrv, true);
+    google::ParseCommandLineFlags(&argc, &argv, true);
     // Create MatrixIOBus object for hardware communication
     matrix_hal::MatrixIOBus matrix_io_bus;
     // Create MicrophoneArray object
     matrix_hal::MicrophoneArray microphone_array(false);
     // Create MicrophoneCore object
     matrix_hal::MicrophoneCore microphone_core(microphone_array);
+        //Create an array of streams to write microphone data to files
+    std::ofstream os[microphone_array.Channels()];
     
     // Buffer array for microphone input
     int16_t mic_buffer[microphone_array.Channels()]
@@ -67,7 +69,7 @@ int main(int argc, char *argv[])
     std::ofstream data_to_file[microphone_array.Channels()];
     
     // Set user flags from gflags as variables
-    int sampling_rate = FLAGS_frequency;
+    int frequency = FLAGS_frequency;
     int seconds_to_record = FLAGS_duration;
     int gain = FLAGS_gain;
 
@@ -91,7 +93,7 @@ int main(int argc, char *argv[])
     microphone_core.Setup(&matrix_io_bus);
 
     // Calculate and set up beamforming delays for beamforming
-    for (uint16_t n_channel = 0; n_channel < microphone_array.Channels(); c++) 
+    for (uint16_t n_channel = 0; n_channel < microphone_array.Channels(); n_channel++) 
     {
         // Set filename for microphone output
         std::string filename = "BF_mic_" +
@@ -143,10 +145,10 @@ int main(int argc, char *argv[])
             size_t cols = sizeof(mic_buffer[0]) / sizeof(mic_buffer[0][0]); // number of columns
         
             // buffer[8][512] => std::vector<std::vector<int16_t>>
-            std::vector<std::vector<int16_t>> buffer_mic_data
+            std::vector<std::vector<int16_t>> buffer_mic_data;
             buffer_mic_data.resize(rows);
            
-            for (int i = 0; i < rows; i++=)
+            for (int i = 0; i < rows; i++)
             {
                 buffer_mic_data[i].assign(
                     mic_buffer[i], 
@@ -162,7 +164,7 @@ int main(int argc, char *argv[])
                 std::string topic = TOPIC_BASE + std::to_string(n_channel);
                 mqtt::message_ptr pubmsg = mqtt::make_message
                     (topic,
-                     reinterpret_cast<const char*>(buffer_mic_data[n_channel]),
+                     reinterpret_cast<const char*>(buffer_mic_data[n_channel].data()),
                      samples * sizeof(int16_t));
                 pubmsg->set_qos(1);
                 try {
@@ -180,7 +182,7 @@ int main(int argc, char *argv[])
                     for (uint16_t c = 0; c < microphone_array.Channels(); c++) 
                     {
                     // Write to recording file
-                    os[c].write((const char *)buffer[c], samples * sizeof(int16_t));
+                    os[c].write((const char *)mic_buffer[c], samples * sizeof(int16_t));
                     }
                 // Set samples to zero for loop to fill buffer
                 samples = 0;
