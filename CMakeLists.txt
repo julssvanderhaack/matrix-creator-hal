@@ -6,5 +6,5 @@ include (cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
 
 add_subdirectory(demos)
-
+add_subdirectory(tfg)
 
