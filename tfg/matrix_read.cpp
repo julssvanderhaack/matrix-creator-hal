@@ -1,5 +1,11 @@
+// ARCHIVO : matrix_read.cpp
+// Autor   : Julio Albisua
+// INFO    : coge el audio de los 8 micrófonos, los procesa por beamforming de banda estrecha
+//           y envia el audio por mqtt 
+
+
+
 #include <iostream>
-#include <fstream>
 #include <vector>
 #include <gflags/gflags.h>
 #include <mqtt/async_client.h>
@@ -7,26 +13,47 @@
 #include "matrix_hal/microphone_array.h"
 #include "matrix_hal/microphone_core.h"
 #include "audio_processor.hpp"
-#include "thread_manager.hpp"
 #include "utils.hpp"
 
-// Config MQTT
+// Configuración de MQTT
 const std::string SERVER_IP("tcp://localhost");
 const std::string SERVER_PORT("1883");
 const std::string CLIENT_ID("AudioPublisher");
-const std::string TOPIC_BASE("audio/channel_");
+const std::string BEAMFORMED_TOPIC("audio/beamformed");
 
 mqtt::async_client client(SERVER_IP + ":" + SERVER_PORT, CLIENT_ID);
 mqtt::connect_options mqtt_conection_options;
 std::atomic<bool> running(true);
 
-DEFINE_int32(frequency, 48000, "Sampling Frequency");
-DEFINE_int32(duration, 5, "Seconds to record");
-DEFINE_int32(gain, -1, "Microphone Gain");
+// Definición de parámetros configurables desde línea de comandos
+DEFINE_int32(frequency, 48000, "Frecuencia de muestreo (Hz)");
+DEFINE_int32(duration, 5, "Segundos a grabar");
+DEFINE_int32(gain, 3, "Ganancia del micrófono");
 
 int main(int argc, char *argv[]) {
+    // Mensaje de ayuda personalizado
+    google::SetUsageMessage(
+        "Uso:\n"
+        "  matrix_read --frequency=<Hz> --duration=<s> --gain=<dB>\n"
+        "\n"
+        "Parámetros:\n"
+        "  --frequency : Frecuencia de muestreo en Hz (por defecto: 48000)\n"
+        "  --duration  : Duración en segundos de la grabación (por defecto: 5)\n"
+	"                   Si se pone duration 0 el programa correrá de forma continua\n"
+        "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n"
+    );
+
+    // Procesar parámetros --help/-h antes de gflags
+    for (int i = 1; i < argc; ++i) {
+        std::string arg(argv[i]);
+        if (arg == "--help" || arg == "-h") {
+            std::cout << google::ProgramUsage() << std::endl;
+            return 0;
+        }
+    }
     google::ParseCommandLineFlags(&argc, &argv, true);
 
+    // Inicialización del bus de la MATRIX Creator
     matrix_hal::MatrixIOBus bus;
     matrix_hal::MicrophoneArray mic_array(false);
     matrix_hal::MicrophoneCore mic_core(mic_array);
@@ -37,23 +64,14 @@ int main(int argc, char *argv[]) {
     int duration = FLAGS_duration;
     int gain = FLAGS_gain;
 
+    // Configuración de la matriz de micrófonos
     mic_array.Setup(&bus);
     mic_array.SetSamplingRate(freq);
     if (gain > 0) mic_array.SetGain(gain);
     mic_array.ShowConfiguration();
     mic_core.Setup(&bus);
 
-    uint16_t CHANNELS = mic_array.Channels();
-    std::vector<std::ofstream> data_to_file(CHANNELS);
-    for (uint16_t ch = 0; ch < CHANNELS; ++ch) {
-        std::string filename = "BF_mic_" + std::to_string(freq) + "_s16le_channel_" + std::to_string(ch) + ".raw";
-        data_to_file[ch].open(filename, std::ios::binary);
-        if (!data_to_file[ch]) {
-            std::cerr << "Error creando archivo: " << filename << std::endl;
-            return 1;
-        }
-    }
-
+    // Conexión al broker MQTT
     mqtt_conection_options.set_clean_session(true);
     try {
         client.connect(mqtt_conection_options)->wait();
@@ -63,9 +81,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Cola thread-safe para intercambiar bloques entre captura y procesamiento
     SafeQueue<AudioBlock> queue;
-    start_threads(&mic_array, queue, data_to_file, freq, duration);
 
+    // Lanzar hilo de captura
+    std::thread capture_thread(capture_audio, &mic_array, std::ref(queue), duration);
+
+    // Lanzar hilo de procesamiento y beamforming
+    std::thread processing_thread(process_beamforming, std::ref(queue), freq, duration);
+
+    // Esperar a que ambos hilos terminen
+    capture_thread.join();
+    running = false;  // Señal de parada al procesamiento
+    processing_thread.join();
+
+    // Desconectar MQTT
     try {
         client.disconnect()->wait();
         std::cout << "Desconectado del broker MQTT." << std::endl;
@@ -73,8 +103,5 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error al desconectar MQTT: " << exc.what() << std::endl;
     }
 
-    for (auto& f : data_to_file) f.close();
-
     return 0;
 }
-

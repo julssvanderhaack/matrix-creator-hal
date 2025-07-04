@@ -18,7 +18,7 @@ message(STATUS "gflags found =>" "${GFLAGS_LIB}")
 add_executable(matrix_read
   matrix_read.cpp
   audio_processor.cpp
-  thread_manager.cpp
+#  thread_manager.cpp
 )
 
 set_property(TARGET matrix_read PROPERTY CXX_STANDARD 11)
