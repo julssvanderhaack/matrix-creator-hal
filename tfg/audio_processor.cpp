@@ -117,7 +117,7 @@ void process_beamforming(SafeQueue<AudioBlock>& queue, uint32_t frequency, int d
                 fftwf_execute_dft_c2r(plan_backward, cross_spectrum, gcc_phat);
 
                 // Buscar pico en GCC-PHAT para estimar TDOA
-                int max_idx = 0;
+                uint32_t max_idx = 0;
                 float max_val = -1e9;
                 for (uint32_t i = 0; i < block_size; ++i) {
                     if (gcc_phat[i] > max_val) {
