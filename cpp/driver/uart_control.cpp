@@ -59,7 +59,15 @@ UartControl::UartControl() : ucr_(0x0) {}
 void UartControl::Setup(MatrixIOBus *bus) {
   MatrixDriver::Setup(bus);
   // TODO(andres.calderon@admobilize.com): avoid systems calls
-  std::system("gpio edge 5 rising");
+  // FIXME: Remove the gpio command, it doesn't work on new kernels
+  // It can be modeled after the microphones code, by using a 
+  // condition variable and firing an interrupt.
+  // See microphone_array.cpp
+  int status = std::system("gpio edge 5 rising");
+  if (status != 0) {
+    std::cout << "Error executing gpio command" << std::endl;
+
+  }
 
   wiringPiSetupSys();
 

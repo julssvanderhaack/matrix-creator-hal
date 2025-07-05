@@ -163,7 +163,7 @@ for (uint16_t c = 0; c < microphone_array.Channels(); c++) {
     // Convertir buffer[8][512] en un std::vector<std::vector<int16_t>>
     std::vector<std::vector<int16_t>> buffer_vec;
     buffer_vec.resize(rows);
-    for (int i = 0; i < rows; i++) {
+    for (size_t i = 0; i < rows; i++) {
         buffer_vec[i].assign(buffer[i], buffer[i] + cols);
     }
 
