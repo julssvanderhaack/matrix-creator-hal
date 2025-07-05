@@ -14,11 +14,11 @@
 #include <chrono>
 
 // Communicates with MATRIX device
-#include "matrix_hal/matrixio_bus.h"
+#include "../cpp/driver/matrixio_bus.h"
 // Interfaces with microphone array
-#include "matrix_hal/microphone_array.h"
+#include "../cpp/driver/microphone_array.h"
 // Enables using FIR filter with microphone array
-#include "matrix_hal/microphone_core.h"
+#include "../cpp/driver/microphone_core.h"
 
 #include "mqtt/async_client.h"
 
@@ -163,7 +163,7 @@ for (uint16_t c = 0; c < microphone_array.Channels(); c++) {
     // Convertir buffer[8][512] en un std::vector<std::vector<int16_t>>
     std::vector<std::vector<int16_t>> buffer_vec;
     buffer_vec.resize(rows);
-    for (int i = 0; i < rows; i++) {
+    for (size_t i = 0; i < rows; i++) {
         buffer_vec[i].assign(buffer[i], buffer[i] + cols);
     }
 

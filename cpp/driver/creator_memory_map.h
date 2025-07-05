@@ -19,6 +19,7 @@
 #define CPP_DRIVER_CREATOR_MEMORY_MAP_H_
 
 #include <string>
+#include <stdint.h>
 
 namespace matrix_hal {
 

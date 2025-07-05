@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # Add -Wall and -Wextra. Also,
 # treat C/C++ warnings as errors if -DADM_FATAL_WARNINGS=ON.

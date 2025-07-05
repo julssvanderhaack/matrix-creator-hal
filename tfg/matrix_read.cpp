@@ -9,9 +9,9 @@
 #include <vector>
 #include <gflags/gflags.h>
 #include <mqtt/async_client.h>
-#include "matrix_hal/matrixio_bus.h"
-#include "matrix_hal/microphone_array.h"
-#include "matrix_hal/microphone_core.h"
+#include "../cpp/driver/matrixio_bus.h"
+#include "../cpp/driver/microphone_array.h"
+#include "../cpp/driver/microphone_core.h"
 #include "audio_processor.hpp"
 #include "utils.hpp"
 

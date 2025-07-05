@@ -15,9 +15,9 @@
 #include <fstream> // Input/output streams and functions
 #include <string> // Use strings
 
-#include "matrix_hal/matrixio_bus.h"     // Communicates with MATRIX device
-#include "matrix_hal/microphone_array.h" // Interfaces with microphone array
-#include "matrix_hal/microphone_core.h"  // Enables using FIR filter with microphone array
+#include "../cpp/driver/matrixio_bus.h"     // Communicates with MATRIX device
+#include "../cpp/driver/microphone_array.h" // Interfaces with microphone array
+#include "../cpp/driver/microphone_core.h"  // Enables using FIR filter with microphone array
 #include "mqtt/async_client.h" // MQTT C++ library
 
 //Constants for MQTT configuration

@@ -1,5 +1,5 @@
 project(malos_service C CXX)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 add_definitions(-std=c++11)
 
@@ -16,7 +16,7 @@ FIND_LIBRARY(GFLAGS_LIB NAMES gflags)
 message(STATUS "gflags found =>" "${GFLAGS_LIB}") 
 
 add_subdirectory(../cpp/driver driver)
-add_subdirectory(../../paho.mqtt.c ${CMAKE_CURRENT_BINARY_DIR}/paho.mqtt_build)
+# add_subdirectory(../../paho.mqtt.c ${CMAKE_CURRENT_BINARY_DIR}/paho.mqtt_build)
 
 add_executable(compass_demo compass_demo.cpp)
   set_property(TARGET compass_demo PROPERTY CXX_STANDARD 11)

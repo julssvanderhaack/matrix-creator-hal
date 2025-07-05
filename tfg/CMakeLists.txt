@@ -1,5 +1,5 @@
 project(matrix_read C CXX)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 add_definitions(-std=c++11)
 
