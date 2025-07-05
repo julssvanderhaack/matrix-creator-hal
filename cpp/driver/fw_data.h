@@ -17,6 +17,7 @@
 
 #ifndef CPP_DRIVER_MCU_DATA_H_
 #define CPP_DRIVER_MCU_DATA_H_
+#include <stdint.h>
 
 namespace matrix_hal {
 

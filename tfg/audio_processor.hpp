@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <atomic>
-#include "matrix_hal/microphone_array.h"
+#include "../cpp/driver/microphone_array.h"
 #include "mqtt/async_client.h"
 #include "utils.hpp"
 

@@ -14,11 +14,11 @@
 #include <chrono>
 
 // Communicates with MATRIX device
-#include "matrix_hal/matrixio_bus.h"
+#include "../cpp/driver/matrixio_bus.h"
 // Interfaces with microphone array
-#include "matrix_hal/microphone_array.h"
+#include "../cpp/driver/microphone_array.h"
 // Enables using FIR filter with microphone array
-#include "matrix_hal/microphone_core.h"
+#include "../cpp/driver/microphone_core.h"
 
 #include "mqtt/async_client.h"
 
