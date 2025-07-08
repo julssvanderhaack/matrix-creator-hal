@@ -8,7 +8,7 @@ include (../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
 
 find_package(Threads)
-find_library (FFTW_LIBRARIES NAMES fftw3f )
+#find_library (FFTW_LIBRARIES NAMES fftw3f )
 find_library (WIRINGPI_LIB NAMES wiringPi)
 find_library (WIRINGPI_DEV_LIB NAMES wiringPiDev)
 find_library (CRYPT_LIB NAMES crypt)
