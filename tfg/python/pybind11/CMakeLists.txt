@@ -5,7 +5,7 @@
 # cmake -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)") ..
 
 cmake_minimum_required(VERSION 3.15)
-project(matrix_read LANGUAGES CXX C)
+project(matrix_pybind LANGUAGES CXX C)
 
 # Enable extra warnings. Not needed but keeps consistency
 include (../../../cmake/FatalWarnings.cmake)
@@ -16,6 +16,7 @@ add_subdirectory(../../../cpp/driver driver)
 
 add_definitions(-std=c++11)
 find_package(Threads)
+
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
@@ -24,15 +25,15 @@ find_library (WIRINGPI_DEV_LIB NAMES wiringPiDev)
 find_library (CRYPT_LIB NAMES crypt)
 find_library (GFLAGS_LIB NAMES gflags)
 
-pybind11_add_module(matrix_python matrix_python.cpp)
-set_property(TARGET matrix_python PROPERTY CXX_STANDARD 11)
+pybind11_add_module(matrix_pybind matrix_python.cpp)
+set_property(TARGET matrix_pybind PROPERTY CXX_STANDARD 11)
 
-target_link_libraries(matrix_python PRIVATE matrix_creator_hal)
-target_link_libraries(matrix_python PRIVATE ${CMAKE_THREAD_LIBS_INIT} )
-target_link_libraries(matrix_python PRIVATE ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
-target_link_libraries(matrix_python PRIVATE ${GFLAGS_LIB})
-target_link_libraries(matrix_python PRIVATE paho-mqttpp3 paho-mqtt3as)
+target_link_libraries(matrix_pybind PRIVATE matrix_creator_hal)
+target_link_libraries(matrix_pybind PRIVATE ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(matrix_pybind PRIVATE ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+target_link_libraries(matrix_pybind PRIVATE ${GFLAGS_LIB})
+target_link_libraries(matrix_pybind PRIVATE paho-mqttpp3 paho-mqtt3as)
 
 
-install(TARGETS matrix_python DESTINATION .)
+install(TARGETS matrix_pybind DESTINATION .)
 
