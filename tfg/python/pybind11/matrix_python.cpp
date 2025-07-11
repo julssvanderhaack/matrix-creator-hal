@@ -15,6 +15,8 @@ int add(int i, int j)
         std::cerr << "Couldn't find bus" << std::endl;
     }
 
+
+    std::cout << "Sum from pybind" << std::endl;
     return i + j;
 }
 
