@@ -48,6 +48,13 @@ add_library(matrix_creator_hal SHARED ${matrix_creator_hal_src})
   target_link_libraries(matrix_creator_hal ${FFTW_LIBRARIES})
   target_link_libraries(matrix_creator_hal ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 
+add_library(matrix_creator_hal_static STATIC ${matrix_creator_hal_src})
+  set_property(TARGET matrix_creator_hal_static PROPERTY CXX_STANDARD 11)
+  set_target_properties(matrix_creator_hal_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_link_libraries(matrix_creator_hal_static ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(matrix_creator_hal_static ${FFTW_LIBRARIES})
+  target_link_libraries(matrix_creator_hal_static ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+
 set (matrix_creator_hal_headers
   circular_queue.h
   creator_memory_map.h  
@@ -83,5 +90,6 @@ set (matrix_creator_hal_headers
 )
 
 install (TARGETS matrix_creator_hal DESTINATION lib)
+install (TARGETS matrix_creator_hal_static DESTINATION lib)
 
 install (FILES ${matrix_creator_hal_headers} DESTINATION include/matrix_hal)
