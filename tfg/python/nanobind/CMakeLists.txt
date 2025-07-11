@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15...3.27)
-project(matrix_nanobind) 
+project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
 
 # Enable extra warnings. Not needed but keeps consistency
 include (../../../cmake/FatalWarnings.cmake)
@@ -34,12 +34,15 @@ find_library (WIRINGPI_DEV_LIB NAMES wiringPiDev)
 find_library (CRYPT_LIB NAMES crypt)
 find_library (GFLAGS_LIB NAMES gflags)
 
-nanobind_add_module(matrix_nanobind matrix_nanobind.cpp)
+# nanobind_add_module(matrix_nanobind matrix_nanobind.cpp)
+nanobind_add_module(matrix_nanobind NB_STATIC matrix_nanobind.cpp)
 set_property(TARGET matrix_nanobind PROPERTY CXX_STANDARD 17)
 
-target_link_libraries(matrix_nanobind PRIVATE matrix_creator_hal)
+target_link_libraries(matrix_nanobind PRIVATE matrix_creator_hal_static)
 target_link_libraries(matrix_nanobind PRIVATE ${CMAKE_THREAD_LIBS_INIT} )
 target_link_libraries(matrix_nanobind PRIVATE ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 target_link_libraries(matrix_nanobind PRIVATE ${GFLAGS_LIB})
 target_link_libraries(matrix_nanobind PRIVATE paho-mqttpp3 paho-mqtt3as)
+
+install(TARGETS matrix_nanobind LIBRARY DESTINATION .)
 

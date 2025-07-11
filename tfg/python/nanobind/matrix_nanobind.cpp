@@ -15,6 +15,7 @@ int add(int a, int b)
         std::cerr << "Couldn't find bus" << std::endl;
     }
 
+    std::cout << "Sum from nanobind" << std::endl;
     return a + b;
 }
 
