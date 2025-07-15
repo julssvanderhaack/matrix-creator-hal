@@ -5,17 +5,26 @@
 #include "./drivers/gpio.h"
 #include "./drivers/info.h"
 #include <map>
+#include <stdio.h>
+
 
 // Declare bus for MATRIX hardware communication
 matrix_hal::MatrixIOBus bus;
 
+// FIXME: Moved to module intitialization to be able to print something in non-raspi hosts
 // Initialize MATRIX bus
-bool busReady = bus.Init();
+// bool busReady = bus.Init(); 
 
 // Exported Python module
 namespace py = pybind11;
-PYBIND11_MODULE(_matrix_hal, m) {
+PYBIND11_MODULE(matrix_pybind_bindings, m) {
+    printf("Pybind module loaded\n\n");
+
     m.doc() = R"pbdoc(Docs coming soon)pbdoc";
+
+    // Initialize bus for MATRIX hardware communication
+    bool busReady = bus.Init();
+
     init_led(m);
     init_sensors(m);
     init_gpio(m);

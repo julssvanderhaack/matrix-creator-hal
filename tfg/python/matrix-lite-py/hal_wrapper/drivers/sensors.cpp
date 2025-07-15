@@ -2,14 +2,14 @@
 #include <iostream>
 #include "./sensors.h"
 #include "../matrix.h"
-#include "matrix_hal/imu_sensor.h"
-#include "matrix_hal/imu_data.h"
-#include "matrix_hal/uv_sensor.h"
-#include "matrix_hal/uv_data.h"
-#include "matrix_hal/pressure_sensor.h"
-#include "matrix_hal/pressure_data.h"
-#include "matrix_hal/humidity_sensor.h"
-#include "matrix_hal/humidity_data.h"
+#include "../../../../../cpp/driver/imu_sensor.h"
+#include "../../../../../cpp/driver/imu_data.h"
+#include "../../../../../cpp/driver/uv_sensor.h"
+#include "../../../../../cpp/driver/uv_data.h"
+#include "../../../../../cpp/driver/pressure_sensor.h"
+#include "../../../../../cpp/driver/pressure_data.h"
+#include "../../../../../cpp/driver/humidity_sensor.h"
+#include "../../../../../cpp/driver/humidity_data.h"
 
 namespace py = pybind11;
 

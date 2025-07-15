@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include "gpio.h"
 #include "../matrix.h"
-#include "matrix_hal/gpio_control.h"
+#include "../../../../../cpp/driver/gpio_control.h"
 #include <stdexcept>
 
 namespace py = pybind11;

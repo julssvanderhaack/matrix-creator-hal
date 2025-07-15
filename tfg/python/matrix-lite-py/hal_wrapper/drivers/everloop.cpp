@@ -1,8 +1,8 @@
 #include <pybind11/pybind11.h>
 #include "./everloop.h"
 #include "../matrix.h"
-#include "matrix_hal/everloop.h"
-#include "matrix_hal/everloop_image.h"
+#include "../../../../../cpp/driver/everloop.h"
+#include "../../../../../cpp/driver/everloop_image.h"
 #include <stdexcept>
 
 namespace py = pybind11;

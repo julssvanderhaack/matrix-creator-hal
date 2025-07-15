@@ -1,8 +1,8 @@
 #ifndef EVERLOOP_H
 #define EVERLOOP_H
 
-#include "matrix_hal/everloop.h"
-#include "matrix_hal/everloop_image.h"
+#include "../../../../../cpp/driver/everloop.h"
+#include "../../../../../cpp/driver/everloop_image.h"
 #include <pybind11/pybind11.h>
 
 namespace py = pybind11;
