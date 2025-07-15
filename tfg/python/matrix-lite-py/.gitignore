@@ -1,0 +1,11 @@
+.DS_Store
+._.DS_Store
+__pycache__
+.vscode
+*.egg-info
+.eggs
+build
+dist
+env
+Makefile
+test.py
