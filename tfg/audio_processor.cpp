@@ -154,11 +154,25 @@ void process_beamforming(
             reinterpret_cast<const char*>(best_output.data()),
             best_output.size() * sizeof(int16_t)
         );
+        // mqtt::message_ptr pubmsg = mqtt::make_message(
+        //     BEAMFORMED_TOPIC,
+        //     reinterpret_cast<const char*>(best_output.data()),
+        //     best_output.size() * sizeof(int16_t)
+        // );
+
+        for (auto &elem : best_output.data()) {
+        auto st = std::to_string(elem);
+
         mqtt::message_ptr pubmsg = mqtt::make_message(
-            BEAMFORMED_TOPIC,
-            reinterpret_cast<const char*>(best_output.data()),
-            best_output.size() * sizeof(int16_t)
-        );
+            BEAMFORMED_TOPIC, st, st.size() * sizeof(std::string));
+        pubmsg->set_qos(1);
+        try {
+            client.publish(pubmsg);
+        } catch (const mqtt::exception &exc) {
+            std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
+        }
+        }
+
         pubmsg->set_qos(1);
         try {
             client.publish(pubmsg);
