@@ -1,8 +1,6 @@
 project(matrix_read C CXX)
 cmake_minimum_required(VERSION 3.5)
 
-add_definitions(-std=c++11)
-
 # Enable extra warnings. Not needed but keeps consistency
 include (../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
@@ -23,7 +21,7 @@ add_executable(matrix_read
 # thread_manager.cpp
 )
 
-set_property(TARGET matrix_read PROPERTY CXX_STANDARD 11)
+set_property(TARGET matrix_read PROPERTY CXX_STANDARD 17)
 
 target_link_libraries(matrix_read matrix_creator_hal)
 target_link_libraries(matrix_read ${CMAKE_THREAD_LIBS_INIT})
