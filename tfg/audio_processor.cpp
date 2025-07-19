@@ -161,10 +161,9 @@ void process_beamforming(
         // );
 
         for (auto &elem : best_output.data()) {
-        auto st = std::to_string(elem);
 
         mqtt::message_ptr pubmsg = mqtt::make_message(
-            BEAMFORMED_TOPIC, st, st.size() * sizeof(std::string));
+            BEAMFORMED_TOPIC, elem, sizeof(int16_t));
         pubmsg->set_qos(1);
         try {
             client.publish(pubmsg);
