@@ -154,16 +154,29 @@ void process_beamforming(
             reinterpret_cast<const char*>(best_output.data()),
             best_output.size() * sizeof(int16_t)
         );
-        mqtt::message_ptr pubmsg = mqtt::make_message(
-            BEAMFORMED_TOPIC,
-            reinterpret_cast<const char*>(best_output.data()),
-            best_output.size() * sizeof(int16_t)
-        );
-        pubmsg->set_qos(1);
-        try {
-            client.publish(pubmsg);
-        } catch (const mqtt::exception &exc) {
-            std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
+
+        // Old MQTT code
+        // mqtt::message_ptr pubmsg = mqtt::make_message(
+        //     BEAMFORMED_TOPIC,
+        //     reinterpret_cast<const char*>(best_output.data()),
+        //     best_output.size() * sizeof(int16_t)
+        // );
+        // pubmsg->set_qos(1);
+        // try {
+        //     client.publish(pubmsg);
+        // } catch (const mqtt::exception &exc) {
+        //     std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
+        // }
+
+        for (auto &elem : best_output.data()) {
+            mqtt::message_ptr pubmsg = mqtt::make_message(
+                BEAMFORMED_TOPIC, elem, sizeof(int16_t));
+            pubmsg->set_qos(1);
+            try {
+                client.publish(pubmsg);
+            } catch (const mqtt::exception &exc) {
+                std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
+            }
         }
     }
 
