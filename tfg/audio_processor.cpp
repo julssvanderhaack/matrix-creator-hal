@@ -1,6 +1,7 @@
 // audio_processor.cpp
 #include "audio_processor.hpp"
 #include <iostream>
+#include <string>
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -168,9 +169,9 @@ void process_beamforming(
         //     std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
         // }
 
-        for (auto &elem : best_output.data()) {
-            mqtt::message_ptr pubmsg = mqtt::make_message(
-                BEAMFORMED_TOPIC, elem, sizeof(int16_t));
+        for (auto &elem : best_output) {
+            std::string st = std::to_string(elem);
+            mqtt::message_ptr pubmsg = mqtt::make_message(BEAMFORMED_TOPIC, st);
             pubmsg->set_qos(1);
             try {
                 client.publish(pubmsg);
