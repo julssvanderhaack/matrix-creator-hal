@@ -19,11 +19,11 @@
 #include "audio_processor.hpp"
 #include "utils.hpp"
 
-std::atomic<bool> running(true);
+std::atomic<bool> running(false);
 
 // Parámetros CLI
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
-DEFINE_int32(duration, 5, "Segundos a grabar (0=continuo)");
+DEFINE_int32(duration, 0, "Segundos a grabar (por defecto, 0=continuo). De momento no guarda las cosas en grabacion continua");
 DEFINE_int32(gain, 3, "Ganancia del micrófono (dB)");
 
 int main(int argc, char *argv[])
@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
     {
         mic_array.SetGain(FLAGS_gain);
     }
+
     mic_array.ShowConfiguration();
     mic_core.Setup(&bus);
 
@@ -82,18 +83,23 @@ int main(int argc, char *argv[])
         std::ref(queue),
         FLAGS_duration);
 
+    std::string wav_name = "recording";
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
-        process_beamforming,
+        record_and_beamforming,
         std::ref(queue),
         FLAGS_frequency,
         FLAGS_duration,
         &everloop,
-        &image);
+        &image,
+        wav_name);
+
+
+    running = true; // TODO(Gonzalo): Is this running needed
 
     // Esperar hilos
     capture_thread.join();
-    running = false;
+    running = false; // TODO(Gonzalo): Is this running needed
     processing_thread.join();
 
     return 0;

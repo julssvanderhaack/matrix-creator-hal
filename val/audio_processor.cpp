@@ -74,101 +74,117 @@ void capture_audio(
 }
 
 // Delay-and-Sum con barrido de ángulos + Everloop
-void process_beamforming(
+void record_and_beamforming(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
     matrix_hal::Everloop *everloop,
-    matrix_hal::EverloopImage *image)
+    matrix_hal::EverloopImage *image,
+    std::string initial_wav_filename)
 {
     const uint16_t num_channels = 8;
     const uint16_t bits_per_sample = 16;
-    uint32_t estimated_samples = frequency * duration;
-    uint32_t data_size = estimated_samples * bits_per_sample / 8;
+    uint32_t default_duration{10};
 
-    std::ofstream outfile("beamformed_output.wav", std::ios::binary);
-    if (!outfile.is_open())
+    uint32_t estimated_samples = 0;
+    if (duration == 0)
     {
-        std::cerr << "Error abriendo beamformed_output.wav\n";
-        running = false;
-        return;
+        estimated_samples = frequency * default_duration;
     }
-    write_wav_header(outfile, frequency, bits_per_sample, 1, data_size);
+    else
+    {
+        estimated_samples = frequency * duration;
+    };
+
+    uint32_t data_size = estimated_samples * bits_per_sample / 8;
 
     const float RADIUS = MIC_DISTANCE / (2.0f * sinf(M_PI / num_channels));
     const float ANGLE_MIN = -180.0f, ANGLE_MAX = 180.0f, ANGLE_STEP = 5.0f;
     const int num_leds = image->leds.size();
 
+    // TODO: 
     while (running)
     {
-        AudioBlock block;
-        if (!queue.pop(block))
+        auto filename = initial_wav_filename;
+        std::ofstream outfile(filename, std::ios::binary);
+        if (!outfile.is_open())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
+            std::cerr << "Error abriendo beamformed_output.wav\n";
+            running = false;
+            return;
         }
-
-        uint32_t block_size = block.samples[0].size();
-        float max_energy = -1.0f, best_angle = 0.0f;
-        std::vector<int16_t> best_output(block_size);
-
-        for (float angle_deg = ANGLE_MIN; angle_deg <= ANGLE_MAX; angle_deg += ANGLE_STEP)
+        while (duration != 0)
         {
-            float doa_rad = angle_deg * M_PI / 180.0f;
-            std::vector<int32_t> sum(block_size, 0);
-
-            for (uint16_t ch = 0; ch < num_channels; ++ch)
+            write_wav_header(outfile, frequency, bits_per_sample, 1, data_size);
+            AudioBlock block;
+            if (!queue.pop(block))
             {
-                float mic_angle = 2.0f * M_PI * ch / num_channels;
-                float x = RADIUS * cosf(mic_angle);
-                float y = RADIUS * sinf(mic_angle);
-                float delay_sec = (x * cosf(doa_rad) + y * sinf(doa_rad)) / SPEED_OF_SOUND;
-                int delay_samples = static_cast<int>(round(delay_sec * frequency));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
 
+            uint32_t block_size = block.samples[0].size();
+            float max_energy = -1.0f, best_angle = 0.0f;
+            std::vector<int16_t> best_output(block_size);
+
+            for (float angle_deg = ANGLE_MIN; angle_deg <= ANGLE_MAX; angle_deg += ANGLE_STEP)
+            {
+                float doa_rad = angle_deg * M_PI / 180.0f;
+                std::vector<int32_t> sum(block_size, 0);
+
+                for (uint16_t ch = 0; ch < num_channels; ++ch)
+                {
+                    float mic_angle = 2.0f * M_PI * ch / num_channels;
+                    float x = RADIUS * cosf(mic_angle);
+                    float y = RADIUS * sinf(mic_angle);
+                    float delay_sec = (x * cosf(doa_rad) + y * sinf(doa_rad)) / SPEED_OF_SOUND;
+                    int delay_samples = static_cast<int>(round(delay_sec * frequency));
+
+                    for (uint32_t i = 0; i < block_size; ++i)
+                    {
+                        int idx = static_cast<int>(i) + delay_samples;
+                        if (idx >= 0 && idx < static_cast<int>(block_size))
+                            sum[i] += block.samples[ch][idx];
+                    }
+                }
+
+                std::vector<int16_t> beamformed(block_size);
+                float energy = 0.0f;
                 for (uint32_t i = 0; i < block_size; ++i)
                 {
-                    int idx = static_cast<int>(i) + delay_samples;
-                    if (idx >= 0 && idx < static_cast<int>(block_size))
-                        sum[i] += block.samples[ch][idx];
+                    beamformed[i] = sum[i] / num_channels;
+                    energy += beamformed[i] * beamformed[i];
+                }
+                if (energy > max_energy)
+                {
+                    max_energy = energy;
+                    best_output = beamformed;
+                    best_angle = angle_deg;
                 }
             }
 
-            std::vector<int16_t> beamformed(block_size);
-            float energy = 0.0f;
-            for (uint32_t i = 0; i < block_size; ++i)
+            float ANGLE_CORRECTION = 15.0f;
+            std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
+
+            // ——— Everloop: limpia, calcula LED y enciende —
+            for (auto &led : image->leds)
             {
-                beamformed[i] = sum[i] / num_channels;
-                energy += beamformed[i] * beamformed[i];
+                led.red = led.green = led.blue = 0;
             }
-            if (energy > max_energy)
-            {
-                max_energy = energy;
-                best_output = beamformed;
-                best_angle = angle_deg;
-            }
+
+            float LED_CORRECTION = -110.0f;
+            float angle01 = (normalize_angle(best_angle + LED_CORRECTION) + 180.0f) / 360.0f;
+            int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
+            image->leds[pin].green = 30;
+
+            everloop->Write(image);
+
+            // ——— Guarda WAV y publica MQTT —
+            outfile.write(
+                reinterpret_cast<const char *>(best_output.data()),
+                best_output.size() * sizeof(int16_t));
         }
 
-        float ANGLE_CORRECTION = 15.0f;
-        std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
-
-        // ——— Everloop: limpia, calcula LED y enciende —
-        for (auto &led : image->leds)
-        {
-            led.red = led.green = led.blue = 0;
-        }
-
-        float LED_CORRECTION = -110.0f;
-        float angle01 = (normalize_angle(best_angle + LED_CORRECTION) + 180.0f) / 360.0f;
-        int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
-        image->leds[pin].green = 30;
-
-        everloop->Write(image);
-
-        // ——— Guarda WAV y publica MQTT —
-        outfile.write(
-            reinterpret_cast<const char *>(best_output.data()),
-            best_output.size() * sizeof(int16_t));
+        outfile.close();
     }
-
-    outfile.close();
 }
