@@ -1,5 +1,4 @@
-#ifndef UTILS_HPP
-#define UTILS_HPP
+#pragma once
 
 #include <vector>
 #include <queue>
@@ -48,5 +47,3 @@ struct AudioBlock
 {
     std::vector<std::vector<int16_t>> samples;
 };
-
-#endif

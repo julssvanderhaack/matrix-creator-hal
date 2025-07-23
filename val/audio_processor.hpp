@@ -1,6 +1,4 @@
-// audio_processor.hpp
-#ifndef AUDIO_PROCESSOR_HPP
-#define AUDIO_PROCESSOR_HPP
+#pragma once
 
 #include <vector>
 #include <atomic>
@@ -27,5 +25,3 @@ void process_beamforming(
     int duration,
     matrix_hal::Everloop *everloop,
     matrix_hal::EverloopImage *image);
-
-#endif // AUDIO_PROCESSOR_HPP
