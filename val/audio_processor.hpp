@@ -17,17 +17,15 @@ extern const std::string BEAMFORMED_TOPIC;
 
 // Prototipos
 void capture_audio(
-    matrix_hal::MicrophoneArray* mic_array,
-    SafeQueue<AudioBlock>& queue,
-    int duration
-);
+    matrix_hal::MicrophoneArray *mic_array,
+    SafeQueue<AudioBlock> &queue,
+    int duration);
 
 void process_beamforming(
-    SafeQueue<AudioBlock>& queue,
+    SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
-    matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image
-);
+    matrix_hal::Everloop *everloop,
+    matrix_hal::EverloopImage *image);
 
 #endif // AUDIO_PROCESSOR_HPP
