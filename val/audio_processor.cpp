@@ -136,14 +136,15 @@ void process_beamforming(
             }
         }
 
-	float ANGLE_CORRECTION = 15.0f;
+        float ANGLE_CORRECTION = 15.0f;
         std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
 
         // ——— Everloop: limpia, calcula LED y enciende —
-        for (auto &led : image->leds)
+        for (auto &led : image->leds) {
             led.red = led.green = led.blue = 0;
+        }
 
-	float LED_CORRECTION = -110.0f;
+        float LED_CORRECTION = -110.0f;
         float angle01 = (normalize_angle(best_angle + LED_CORRECTION)  + 180.0f) / 360.0f ;  
         int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
         image->leds[pin].green = 30;
@@ -156,29 +157,7 @@ void process_beamforming(
             best_output.size() * sizeof(int16_t)
         );
 
-        // Old MQTT code
-        // mqtt::message_ptr pubmsg = mqtt::make_message(
-        //     BEAMFORMED_TOPIC,
-        //     reinterpret_cast<const char*>(best_output.data()),
-        //     best_output.size() * sizeof(int16_t)
-        // );
-        // pubmsg->set_qos(1);
-        // try {
-        //     client.publish(pubmsg);
-        // } catch (const mqtt::exception &exc) {
-        //     std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-        // }
 
-        for (auto &elem : best_output) {
-            std::string st = std::to_string(elem);
-            mqtt::message_ptr pubmsg = mqtt::make_message(BEAMFORMED_TOPIC, st);
-            pubmsg->set_qos(1);
-            try {
-                client.publish(pubmsg);
-            } catch (const mqtt::exception &exc) {
-                std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-            }
-        }
     }
 
     outfile.close();
