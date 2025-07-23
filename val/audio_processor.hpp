@@ -1,6 +1,4 @@
-// audio_processor.hpp
-#ifndef AUDIO_PROCESSOR_HPP
-#define AUDIO_PROCESSOR_HPP
+#pragma once
 
 #include <vector>
 #include <atomic>
@@ -17,17 +15,20 @@ extern const std::string BEAMFORMED_TOPIC;
 
 // Prototipos
 void capture_audio(
-    matrix_hal::MicrophoneArray* mic_array,
-    SafeQueue<AudioBlock>& queue,
-    int duration
-);
+    matrix_hal::MicrophoneArray *mic_array,
+    SafeQueue<AudioBlock> &queue,
+    int duration);
 
-void process_beamforming(
-    SafeQueue<AudioBlock>& queue,
+void record_all_channels_wav(
+    SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
-    matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image
-);
+    std::string folder,
+    std::string initial_wav_filename);
 
-#endif // AUDIO_PROCESSOR_HPP
+void record_all_channels_raw(
+    SafeQueue<AudioBlock> &queue,
+    uint32_t frequency,
+    int duration,
+    std::string folder,
+    std::string initial_raw_filename);

@@ -6,58 +6,60 @@
 #include <chrono>
 #include <fstream>
 #include <cmath>
+#include <array>
+using namespace std::literals::chrono_literals;
 
-#define SPEED_OF_SOUND 343.0f      // Velocidad del sonido (m/s)
-#define MIC_DISTANCE    0.04f      // Distancia entre micrófonos adyacentes (m)
-
-float normalize_angle(float angle_deg) {
-    while (angle_deg > 180.0f)  angle_deg -= 360.0f;
-    while (angle_deg < -180.0f) angle_deg += 360.0f;
-    return angle_deg;
-}
+#define SPEED_OF_SOUND 343.0f   // Velocidad del sonido (m/s)
+#define MIC_DISTANCE 0.04f      // Distancia entre micrófonos adyacentes (m)
+#define NUM_CHANNELS 8          // Number of microphones in the matrix device
+#define BITS_PER_SAMPLE 16      // Bits per sample of the recorded audio
+#define BITS_PER_BYTE 8         // Each byte has 8 bits
+#define SAMPLES_PER_BLOCK 512.0 // Each block has 512 samples, and the adquisition thread is blocked otherwise
 
 // Prototipo WAV
+// TODO: This function is wrong the matlab and android players don't like it
 static void write_wav_header(
     std::ofstream &out,
     uint32_t sample_rate,
     uint16_t bits_per_sample,
-    uint16_t num_channels,
-    uint32_t data_size
-) {
-    uint32_t byte_rate   = sample_rate * num_channels * bits_per_sample / 8;
-    uint16_t block_align = num_channels * bits_per_sample / 8;
-    uint32_t chunk_size  = 36 + data_size;
+    uint16_t num_channels_wav,
+    uint32_t data_size)
+{
+    uint32_t byte_rate = sample_rate * num_channels_wav * BITS_PER_SAMPLE / BITS_PER_BYTE;
+    uint16_t block_align = num_channels_wav * BITS_PER_SAMPLE / BITS_PER_BYTE;
+    uint32_t chunk_size = 36 + data_size;
 
     out.seekp(0, std::ios::beg);
     out.write("RIFF", 4);
-    out.write(reinterpret_cast<const char*>(&chunk_size), 4);
+    out.write(reinterpret_cast<const char *>(&chunk_size), 4);
     out.write("WAVE", 4);
     out.write("fmt ", 4);
 
     uint32_t subchunk1_size = 16;
-    uint16_t audio_format   = 1; // PCM
-    out.write(reinterpret_cast<const char*>(&subchunk1_size), 4);
-    out.write(reinterpret_cast<const char*>(&audio_format), 2);
-    out.write(reinterpret_cast<const char*>(&num_channels), 2);
-    out.write(reinterpret_cast<const char*>(&sample_rate), 4);
-    out.write(reinterpret_cast<const char*>(&byte_rate), 4);
-    out.write(reinterpret_cast<const char*>(&block_align), 2);
-    out.write(reinterpret_cast<const char*>(&bits_per_sample), 2);
+    uint16_t audio_format = 1; // PCM
+    out.write(reinterpret_cast<const char *>(&subchunk1_size), 4);
+    out.write(reinterpret_cast<const char *>(&audio_format), 2);
+    out.write(reinterpret_cast<const char *>(&num_channels_wav), 2);
+    out.write(reinterpret_cast<const char *>(&sample_rate), 4);
+    out.write(reinterpret_cast<const char *>(&byte_rate), 4);
+    out.write(reinterpret_cast<const char *>(&block_align), 2);
+    out.write(reinterpret_cast<const char *>(&bits_per_sample), 2);
     out.write("data", 4);
-    out.write(reinterpret_cast<const char*>(&data_size), 4);
+    out.write(reinterpret_cast<const char *>(&data_size), 4);
 }
 
 // Captura multicanal
 void capture_audio(
-    matrix_hal::MicrophoneArray* mic_array,
-    SafeQueue<AudioBlock>& queue,
-    int duration
-) {
+    matrix_hal::MicrophoneArray *mic_array,
+    SafeQueue<AudioBlock> &queue,
+    int duration)
+{
     const uint32_t BLOCK_SIZE = mic_array->NumberOfSamples();
-    const uint16_t CHANNELS   = mic_array->Channels();
+    const uint16_t CHANNELS = mic_array->Channels();
     auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(duration);
 
-    while (running && (duration == 0 || std::chrono::steady_clock::now() < end_time)) {
+    while (running && (duration == 0 || std::chrono::steady_clock::now() < end_time))
+    {
         mic_array->Read();
         AudioBlock block;
         block.samples.resize(CHANNELS, std::vector<int16_t>(BLOCK_SIZE));
@@ -69,117 +71,252 @@ void capture_audio(
     running = false;
 }
 
-// Delay-and-Sum con barrido de ángulos + Everloop
-void process_beamforming(
-    SafeQueue<AudioBlock>& queue,
+// Recordings
+void record_all_channels_wav(
+    SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
-    matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image
-) {
-    const uint16_t num_channels   = 8;
-    const uint16_t bits_per_sample= 16;
-    uint32_t estimated_samples    = frequency * duration;
-    uint32_t data_size            = estimated_samples * bits_per_sample / 8;
+    std::string folder,
+    std::string initial_wav_filename)
+{
+    uint32_t estimated_samples = frequency * duration;
+    uint32_t data_size = estimated_samples * BITS_PER_SAMPLE / BITS_PER_BYTE;
 
-    std::ofstream outfile("beamformed_output.wav", std::ios::binary);
-    if (!outfile.is_open()) {
-        std::cerr << "Error abriendo beamformed_output.wav\n";
-        running = false;
-        return;
+    if (initial_wav_filename.empty())
+    {
+        initial_wav_filename = "output";
     }
-    write_wav_header(outfile, frequency, bits_per_sample, 1, data_size);
 
-    const float RADIUS   	 = MIC_DISTANCE / (2.0f * sinf(M_PI / num_channels));
-    const float ANGLE_MIN 	 = -180.0f, ANGLE_MAX = 180.0f, ANGLE_STEP = 5.0f;       
-    const int   num_leds  = image->leds.size();
+    // Trim spaces in the filenames strings
+    rtrim_string(initial_wav_filename);
+    ltrim_string(initial_wav_filename);
 
-    while (running) {
+    auto time_str = std::string();
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    char time_buffer[1024]; // This should be enough for a date no?
+                            // "%F-%H-%M-%S". Write %F: iso data yy-mm-dd %H:hour, %M: minute, %S: second
+    if (std::strftime(time_buffer, sizeof(time_buffer), "%F-%Hh-%Mm-%Ss", std::localtime(&now_time)))
+    {
+        time_str = std::string{time_buffer};
+    }
+    else
+    {
+        time_str = std::string{"00-00-00-00-00"};
+        std::cerr << "Error leyendo fecha" << std::endl;
+    }
+
+    std::string desired_extension = ".wav";
+    std::string maybe_extension = std::string("");
+    if (initial_wav_filename.length() < 4)
+    {
+        maybe_extension = desired_extension;
+    }
+    else
+    {
+        auto idx = initial_wav_filename.rfind('.');
+        if (idx != std::string::npos)
+        {
+            // There is a . in the filename, check if the extension is .wav (rfind finds the last .)
+            std::string file_extension = initial_wav_filename.substr(idx + 1);
+            if (file_extension != desired_extension)
+            {
+                // The file has other extension
+                maybe_extension = desired_extension;
+            }
+            else
+            {
+                // The file has .wav as an extension
+                maybe_extension = std::string("");
+            }
+        }
+        else // There is no extension
+        {
+            maybe_extension = desired_extension;
+        }
+    }
+
+    // Default to current folder
+    if (folder.empty())
+    {
+        folder = ".";
+    }
+    else
+    { // Remove last / of folder, we add it ourselfs
+        auto last_character_folder = folder.back();
+        if (last_character_folder == '/')
+        {
+            folder.pop_back();
+        }
+    }
+
+    std::array<std::string, NUM_CHANNELS> filenames;
+    std::array<std::ofstream, NUM_CHANNELS> filehandles;
+
+    for (size_t i = 0; i < NUM_CHANNELS; i++)
+    {
+        std::string wavname = folder + "/" + "ch" + std::to_string(i + 1) + "-" + time_str + "-" + initial_wav_filename + maybe_extension;
+        filenames[i] = wavname;
+        filehandles[i] = std::move(std::ofstream(wavname, std::ios::binary)); // Is the move needed?
+        if (!filehandles[i].is_open())
+        {
+            std::cerr << "Error abriendo " << wavname << "para grabar" << std::endl;
+            running = false;
+            return;
+        }
+        write_wav_header(filehandles[i], frequency, BITS_PER_SAMPLE, 1, data_size);
+    }
+
+    while (running)
+    {
         AudioBlock block;
-        if (!queue.pop(block)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        if (!queue.pop(block))
+        {
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            double f = frequency / 1.0;
+            auto time = ((1.0 / f) * SAMPLES_PER_BLOCK * 1000.0);
+            auto s_ms = (1ms * time);
+            // std::cerr << "Sleeping for " << time << std::endl;
+            std::this_thread::sleep_for(s_ms);
             continue;
         }
 
         uint32_t block_size = block.samples[0].size();
-        float max_energy = -1.0f, best_angle = 0.0f;
-        std::vector<int16_t> best_output(block_size);
+        std::vector<std::vector<int16_t>> audios(NUM_CHANNELS, std::vector<int16_t>(block_size, 0));
 
-        for (float angle_deg = ANGLE_MIN; angle_deg <= ANGLE_MAX; angle_deg += ANGLE_STEP) {
-            float doa_rad = angle_deg * M_PI / 180.0f;
-            std::vector<int32_t> sum(block_size, 0);
+        for (size_t i = 0; i < NUM_CHANNELS; i++)
+        {
+            std::vector<int16_t> ch_audio(block.samples[i]);
+            // Write inside the while(running) loop, that way we write all the
+            // data as soon as we can take it. Also Write automatically advances the
+            // handle
+            filehandles[i].write(
+                reinterpret_cast<const char *>(ch_audio.data()),
+                ch_audio.size() * sizeof(int16_t));
+        }
+    }
+}
 
-            for (uint16_t ch = 0; ch < num_channels; ++ch) {
-                float mic_angle = 2.0f * M_PI * ch / num_channels;
-                float x = RADIUS * cosf(mic_angle);
-                float y = RADIUS * sinf(mic_angle);
-                float delay_sec = (x * cosf(doa_rad) + y * sinf(doa_rad)) / SPEED_OF_SOUND;
-                int delay_samples = static_cast<int>(round(delay_sec * frequency));
+void record_all_channels_raw(
+    SafeQueue<AudioBlock> &queue,
+    uint32_t frequency,
+    int duration,
+    std::string folder,
+    std::string initial_raw_filename)
+{
+    uint32_t estimated_samples = frequency * duration;
+    uint32_t data_size = estimated_samples * BITS_PER_SAMPLE / BITS_PER_BYTE;
+    data_size = data_size; // Avoid build warnings, we want the same interface that with wav
 
-                for (uint32_t i = 0; i < block_size; ++i) {
-                    int idx = static_cast<int>(i) + delay_samples;
-                    if (idx >= 0 && idx < static_cast<int>(block_size))
-                        sum[i] += block.samples[ch][idx];
-                }
+    if (initial_raw_filename.empty())
+    {
+        initial_raw_filename = "output";
+    }
+
+    // Trim spaces in the filenames strings
+    rtrim_string(initial_raw_filename);
+    ltrim_string(initial_raw_filename);
+
+    auto time_str = std::string();
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    char time_buffer[1024]; // This should be enough for a date no?
+                            // "%F-%H-%M-%S". Write %F: iso data yy-mm-dd %H:hour, %M: minute, %S: second
+    if (std::strftime(time_buffer, sizeof(time_buffer), "%F-%Hh-%Mm-%Ss", std::localtime(&now_time)))
+    {
+        time_str = std::string{time_buffer};
+    }
+    else
+    {
+        time_str = std::string{"00-00-00-00-00"};
+        std::cerr << "Error leyendo fecha" << std::endl;
+    }
+
+    std::string desired_extension = ".raw";
+    std::string maybe_extension = std::string("");
+    if (initial_raw_filename.length() < 4)
+    {
+        maybe_extension = desired_extension;
+    }
+    else
+    {
+        auto idx = initial_raw_filename.rfind('.');
+        if (idx != std::string::npos)
+        {
+            // There is a . in the filename, check if the extension is .wav (rfind finds the last .)
+            std::string file_extension = initial_raw_filename.substr(idx + 1);
+            if (file_extension != desired_extension)
+            {
+                // The file has other extension
+                maybe_extension = desired_extension;
             }
-
-            std::vector<int16_t> beamformed(block_size);
-            float energy = 0.0f;
-            for (uint32_t i = 0; i < block_size; ++i) {
-                beamformed[i] = sum[i] / num_channels;
-                energy += beamformed[i] * beamformed[i];
-            }
-            if (energy > max_energy) {
-                max_energy = energy;
-                best_output = beamformed;
-                best_angle  = angle_deg;
+            else
+            {
+                // The file has .wav as an extension
+                maybe_extension = std::string("");
             }
         }
-
-	float ANGLE_CORRECTION = 15.0f;
-        std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
-
-        // ——— Everloop: limpia, calcula LED y enciende —
-        for (auto &led : image->leds)
-            led.red = led.green = led.blue = 0;
-
-	float LED_CORRECTION = -110.0f;
-        float angle01 = (normalize_angle(best_angle + LED_CORRECTION)  + 180.0f) / 360.0f ;  
-        int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
-        image->leds[pin].green = 30;
-
-        everloop->Write(image);
-
-        // ——— Guarda WAV y publica MQTT —
-        outfile.write(
-            reinterpret_cast<const char*>(best_output.data()),
-            best_output.size() * sizeof(int16_t)
-        );
-
-        // Old MQTT code
-        // mqtt::message_ptr pubmsg = mqtt::make_message(
-        //     BEAMFORMED_TOPIC,
-        //     reinterpret_cast<const char*>(best_output.data()),
-        //     best_output.size() * sizeof(int16_t)
-        // );
-        // pubmsg->set_qos(1);
-        // try {
-        //     client.publish(pubmsg);
-        // } catch (const mqtt::exception &exc) {
-        //     std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-        // }
-
-        for (auto &elem : best_output) {
-            std::string st = std::to_string(elem);
-            mqtt::message_ptr pubmsg = mqtt::make_message(BEAMFORMED_TOPIC, st);
-            pubmsg->set_qos(1);
-            try {
-                client.publish(pubmsg);
-            } catch (const mqtt::exception &exc) {
-                std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-            }
+        else // There is no extension
+        {
+            maybe_extension = desired_extension;
         }
     }
 
-    outfile.close();
+    if (folder.empty())
+    { // Default to current folder
+        folder = ".";
+    }
+    else
+    { // Remove last / from folder name, we add it ourselfs
+        auto last_character_folder = folder.back();
+        if (last_character_folder == '/')
+        {
+            folder.pop_back();
+        }
+    }
+
+    std::array<std::string, NUM_CHANNELS> filenames;
+    std::array<std::ofstream, NUM_CHANNELS> filehandles;
+
+    for (size_t i = 0; i < NUM_CHANNELS; i++)
+    {
+        std::string raw_file_name = folder + "/" + "ch" + std::to_string(i + 1) + "-" + time_str + "-" + initial_raw_filename + maybe_extension;
+        filenames[i] = raw_file_name;
+        filehandles[i] = std::move(std::ofstream(raw_file_name, std::ios::binary)); // Is the move needed?
+        if (!filehandles[i].is_open())
+        {
+            std::cerr << "Error abriendo " << raw_file_name << "para grabar" << std::endl;
+            running = false;
+            return;
+        }
+    }
+
+    while (running)
+    {
+        AudioBlock block;
+        if (!queue.pop(block))
+        {
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            double f = frequency / 1.0;
+            double time = ((1.0 / f) * SAMPLES_PER_BLOCK * 1000.0);
+            auto s_ms = (1ms * time);
+            // std::cerr << "Sleeping for " << time << std::endl;
+            std::this_thread::sleep_for(s_ms);
+            continue;
+        }
+
+        uint32_t block_size = block.samples[0].size();
+        std::vector<std::vector<int16_t>> audios(NUM_CHANNELS, std::vector<int16_t>(block_size, 0));
+
+        for (size_t i = 0; i < NUM_CHANNELS; i++)
+        {
+            std::vector<int16_t> ch_audio(block.samples[i]);
+            // Write inside the while(running) loop, that way we write all the
+            // data as soon as we can take it. Also Write automatically advances the
+            // handle
+            filehandles[i].write(
+                reinterpret_cast<const char *>(ch_audio.data()),
+                ch_audio.size() * sizeof(int16_t));
+        }
+    }
 }
