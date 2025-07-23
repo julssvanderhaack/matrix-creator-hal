@@ -8,7 +8,6 @@ ADM_EXTRA_WARNINGS()
 add_subdirectory(../cpp/driver driver)
 
 find_package(Threads)
-#find_library (FFTW_LIBRARIES NAMES fftw3f )
 find_library (WIRINGPI_LIB NAMES wiringPi)
 find_library (WIRINGPI_DEV_LIB NAMES wiringPiDev)
 find_library (CRYPT_LIB NAMES crypt)
@@ -18,7 +17,6 @@ message(STATUS "gflags found =>" "${GFLAGS_LIB}")
 add_executable(matrix_read
   matrix_read.cpp
   audio_processor.cpp
-# thread_manager.cpp
 )
 
 set_property(TARGET matrix_read PROPERTY CXX_STANDARD 17)
@@ -27,4 +25,3 @@ target_link_libraries(matrix_read matrix_creator_hal)
 target_link_libraries(matrix_read ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(matrix_read ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 target_link_libraries(matrix_read ${GFLAGS_LIB})
-target_link_libraries(matrix_read paho-mqttpp3 paho-mqtt3as)

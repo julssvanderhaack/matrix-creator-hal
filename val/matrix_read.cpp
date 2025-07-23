@@ -19,14 +19,6 @@
 #include "audio_processor.hpp"
 #include "utils.hpp"
 
-// Configuración de MQTT
-const std::string SERVER_IP    = "tcp://localhost";
-const std::string SERVER_PORT  = "1883";
-const std::string CLIENT_ID    = "AudioPublisher";
-const std::string BEAMFORMED_TOPIC = "audio/beamformed";
-
-mqtt::async_client client(SERVER_IP + ":" + SERVER_PORT, CLIENT_ID);
-mqtt::connect_options mqtt_connection_options;
 std::atomic<bool> running(true);
 
 // Parámetros CLI
@@ -65,19 +57,10 @@ int main(int argc, char *argv[]) {
     matrix_hal::MicrophoneCore  mic_core(mic_array);
     mic_array.Setup(&bus);
     mic_array.SetSamplingRate(FLAGS_frequency);
-    if (FLAGS_gain > 0) mic_array.SetGain(FLAGS_gain);
+    if (FLAGS_gain > 0) {mic_array.SetGain(FLAGS_gain);}
     mic_array.ShowConfiguration();
     mic_core.Setup(&bus);
 
-    // Conectar MQTT
-    mqtt_connection_options.set_clean_session(true);
-    try {
-        client.connect(mqtt_connection_options)->wait();
-        std::cout << "Conectado al broker MQTT." << std::endl;
-    } catch (const mqtt::exception &exc) {
-        std::cerr << "Error al conectar MQTT: " << exc.what() << std::endl;
-        return 1;
-    }
 
     // Everloop
     matrix_hal::Everloop everloop;
@@ -110,13 +93,6 @@ int main(int argc, char *argv[]) {
     running = false;
     processing_thread.join();
 
-    // Desconectar MQTT
-    try {
-        client.disconnect()->wait();
-        std::cout << "Desconectado del broker MQTT." << std::endl;
-    } catch (const mqtt::exception &exc) {
-        std::cerr << "Error al desconectar MQTT: " << exc.what() << std::endl;
-    }
 
     return 0;
 }
