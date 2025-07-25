@@ -74,22 +74,44 @@ void capture_audio(
 }
 
 // Delay-and-Sum con barrido de ángulos + Everloop
-void process_beamforming(
+void record_and_beamforming(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
     matrix_hal::Everloop *everloop,
-    matrix_hal::EverloopImage *image)
+    matrix_hal::EverloopImage *image,
+    std::string initial_wav_filename)
 {
     const uint16_t num_channels = 8;
     const uint16_t bits_per_sample = 16;
     uint32_t estimated_samples = frequency * duration;
     uint32_t data_size = estimated_samples * bits_per_sample / 8;
 
-    std::ofstream outfile("beamformed_output.wav", std::ios::binary);
+    if (initial_wav_filename.empty())
+    {
+        initial_wav_filename = "output.wav";
+    }
+
+    auto time_str = std::string();
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    char time_buffer[1024]; // This should be enough for a date no?
+                            // "%F-%H-%M-%S". Write %F: iso data yy-mm-dd %H:hour, %M: minute, %S: second
+    if (std::strftime(time_buffer, sizeof(time_buffer), "%F-%Hh-%Mm-%Ss", std::localtime(&now_time)))
+    {
+        time_str = std::string{time_buffer};
+    }
+    else
+    {
+        time_str = std::string{"00-00-00-00-00"};
+        std::cerr << "Error leyendo fecha" << std::endl;
+    }
+
+    std::string wavname = time_str + initial_wav_filename;
+    std::ofstream outfile(wavname, std::ios::binary);
     if (!outfile.is_open())
     {
-        std::cerr << "Error abriendo beamformed_output.wav\n";
+        std::cerr << "Error abriendo " << wavname << "para grabar" << std::endl;
         running = false;
         return;
     }
