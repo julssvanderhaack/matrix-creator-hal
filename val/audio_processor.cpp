@@ -10,16 +10,9 @@
 
 #define SPEED_OF_SOUND 343.0f // Velocidad del sonido (m/s)
 #define MIC_DISTANCE 0.04f    // Distancia entre micrófonos adyacentes (m)
-#define NUM_CHANNELS 8
-
-float normalize_angle(float angle_deg)
-{
-    while (angle_deg > 180.0f)
-        angle_deg -= 360.0f;
-    while (angle_deg < -180.0f)
-        angle_deg += 360.0f;
-    return angle_deg;
-}
+#define NUM_CHANNELS 8        // Number of microphones in the matrix device
+#define BITS_PER_SAMPLE 16    // Bits per sample of the recorded audio
+#define BITS_PER_BYTE 8       // Each byte has 8 bits
 
 // Prototipo WAV
 static void write_wav_header(
@@ -29,8 +22,8 @@ static void write_wav_header(
     uint16_t num_channels_wav,
     uint32_t data_size)
 {
-    uint32_t byte_rate = sample_rate * num_channels_wav * bits_per_sample / 8;
-    uint16_t block_align = num_channels_wav * bits_per_sample / 8;
+    uint32_t byte_rate = sample_rate * num_channels_wav * BITS_PER_SAMPLE / BITS_PER_BYTE;
+    uint16_t block_align = num_channels_wav * BITS_PER_SAMPLE / BITS_PER_BYTE;
     uint32_t chunk_size = 36 + data_size;
 
     out.seekp(0, std::ios::beg);
@@ -76,18 +69,14 @@ void capture_audio(
 }
 
 // Delay-and-Sum con barrido de ángulos + Everloop
-void record_and_beamforming(
+void record_all_channels(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
-    matrix_hal::Everloop *everloop,
-    matrix_hal::EverloopImage *image,
     std::string initial_wav_filename)
 {
-    const uint16_t num_channels = 8;
-    const uint16_t bits_per_sample = 16;
     uint32_t estimated_samples = frequency * duration;
-    uint32_t data_size = estimated_samples * bits_per_sample / 8;
+    uint32_t data_size = estimated_samples * BITS_PER_SAMPLE / BITS_PER_BYTE;
 
     if (initial_wav_filename.empty())
     {
@@ -123,7 +112,7 @@ void record_and_beamforming(
             running = false;
             return;
         }
-        write_wav_header(filehandles[i], frequency, bits_per_sample, 1, data_size);
+        write_wav_header(filehandles[i], frequency, BITS_PER_SAMPLE, 1, data_size);
     }
 
     while (running)
@@ -138,32 +127,15 @@ void record_and_beamforming(
         uint32_t block_size = block.samples[0].size();
         std::vector<std::vector<int16_t>> audios(NUM_CHANNELS, std::vector<int16_t>(block_size, 0));
 
-        // TODO: I think we don't need this anymore
-        // for (uint16_t ch = 0; ch < num_channels; ++ch)
-        // {
-        //     for (uint32_t i = 0; i < block_size; ++i)
-        //     {
-        //         if (i >= 0 && i < block_size)
-        //             audios[ch][i] = block.samples[ch][i]; // TODO: Don't sum, we want all the info in the channels
-        //     }
-        // }
-        // std::vector<int16_t> ch_audio(audios[i]);
-
         for (size_t i = 0; i < NUM_CHANNELS; i++)
         {
             std::vector<int16_t> ch_audio(block.samples[i]);
-            // Write in>side the while(running) loop, that way we write all the data as soon as we can take it.
-            // Write automatically advances the handle
+            // Write inside the while(running) loop, that way we write all the
+            // data as soon as we can take it. Also Write automatically advances the
+            // handle
             filehandles[i].write(
                 reinterpret_cast<const char *>(ch_audio.data()),
                 ch_audio.size() * sizeof(int16_t));
         }
-    }
-
-    for (size_t i = 0; i < NUM_CHANNELS; i++)
-    {
-        // In theory this isn't needed because the ofstream uses RAII and close the file handle automatically
-        // According to the docs: Note that any open file is automatically closed when the ofstream object is destroyed.
-        filehandles[i].close();
     }
 }

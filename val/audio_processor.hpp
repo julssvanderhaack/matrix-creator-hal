@@ -19,10 +19,8 @@ void capture_audio(
     SafeQueue<AudioBlock> &queue,
     int duration);
 
-void record_and_beamforming(
+void record_all_channels(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
-    matrix_hal::Everloop *everloop,
-    matrix_hal::EverloopImage *image,
     std::string initial_wav_filename);
