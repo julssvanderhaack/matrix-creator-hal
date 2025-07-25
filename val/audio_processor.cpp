@@ -6,9 +6,11 @@
 #include <chrono>
 #include <fstream>
 #include <cmath>
+#include <array>
 
 #define SPEED_OF_SOUND 343.0f // Velocidad del sonido (m/s)
 #define MIC_DISTANCE 0.04f    // Distancia entre micrófonos adyacentes (m)
+#define NUM_CHANNELS 8
 
 float normalize_angle(float angle_deg)
 {
@@ -107,19 +109,22 @@ void record_and_beamforming(
         std::cerr << "Error leyendo fecha" << std::endl;
     }
 
-    std::string wavname = time_str + initial_wav_filename;
-    std::ofstream outfile(wavname, std::ios::binary);
-    if (!outfile.is_open())
-    {
-        std::cerr << "Error abriendo " << wavname << "para grabar" << std::endl;
-        running = false;
-        return;
-    }
-    write_wav_header(outfile, frequency, bits_per_sample, 1, data_size);
+    std::array<std::string, NUM_CHANNELS> filenames;
+    std::array<std::ofstream, NUM_CHANNELS> filehandles;
 
-    const float RADIUS = MIC_DISTANCE / (2.0f * sinf(M_PI / num_channels));
-    const float ANGLE_MIN = -180.0f, ANGLE_MAX = 180.0f, ANGLE_STEP = 5.0f;
-    const int num_leds = image->leds.size();
+    for (size_t i = 0; i < NUM_CHANNELS; i++)
+    {
+        std::string wavname = "ch" + std::to_string(i) + "_" + time_str + initial_wav_filename;
+        filenames[i] = wavname;
+        filehandles[i] = std::move(std::ofstream(wavname, std::ios::binary)); // Is the move needed?
+        if (!filehandles[i].is_open())
+        {
+            std::cerr << "Error abriendo " << wavname << "para grabar" << std::endl;
+            running = false;
+            return;
+        }
+        write_wav_header(filehandles[i], frequency, bits_per_sample, 1, data_size);
+    }
 
     while (running)
     {
@@ -131,66 +136,34 @@ void record_and_beamforming(
         }
 
         uint32_t block_size = block.samples[0].size();
-        float max_energy = -1.0f, best_angle = 0.0f;
-        std::vector<int16_t> best_output(block_size);
+        std::vector<std::vector<int16_t>> audios(NUM_CHANNELS, std::vector<int16_t>(block_size, 0));
 
-        for (float angle_deg = ANGLE_MIN; angle_deg <= ANGLE_MAX; angle_deg += ANGLE_STEP)
+        // TODO: I think we don't need this anymore
+        // for (uint16_t ch = 0; ch < num_channels; ++ch)
+        // {
+        //     for (uint32_t i = 0; i < block_size; ++i)
+        //     {
+        //         if (i >= 0 && i < block_size)
+        //             audios[ch][i] = block.samples[ch][i]; // TODO: Don't sum, we want all the info in the channels
+        //     }
+        // }
+        // std::vector<int16_t> ch_audio(audios[i]);
+
+        for (size_t i = 0; i < NUM_CHANNELS; i++)
         {
-            float doa_rad = angle_deg * M_PI / 180.0f;
-            std::vector<int32_t> sum(block_size, 0);
-
-            for (uint16_t ch = 0; ch < num_channels; ++ch)
-            {
-                float mic_angle = 2.0f * M_PI * ch / num_channels;
-                float x = RADIUS * cosf(mic_angle);
-                float y = RADIUS * sinf(mic_angle);
-                float delay_sec = (x * cosf(doa_rad) + y * sinf(doa_rad)) / SPEED_OF_SOUND;
-                int delay_samples = static_cast<int>(round(delay_sec * frequency));
-
-                for (uint32_t i = 0; i < block_size; ++i)
-                {
-                    int idx = static_cast<int>(i) + delay_samples;
-                    if (idx >= 0 && idx < static_cast<int>(block_size))
-                        sum[i] += block.samples[ch][idx];
-                }
-            }
-
-            std::vector<int16_t> beamformed(block_size);
-            float energy = 0.0f;
-            for (uint32_t i = 0; i < block_size; ++i)
-            {
-                beamformed[i] = sum[i] / num_channels;
-                energy += beamformed[i] * beamformed[i];
-            }
-            if (energy > max_energy)
-            {
-                max_energy = energy;
-                best_output = beamformed;
-                best_angle = angle_deg;
-            }
+            std::vector<int16_t> ch_audio(block.samples[i]);
+            // Write in>side the while(running) loop, that way we write all the data as soon as we can take it.
+            // Write automatically advances the handle
+            filehandles[i].write(
+                reinterpret_cast<const char *>(ch_audio.data()),
+                ch_audio.size() * sizeof(int16_t));
         }
-
-        float ANGLE_CORRECTION = 15.0f;
-        std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
-
-        // ——— Everloop: limpia, calcula LED y enciende —
-        for (auto &led : image->leds)
-        {
-            led.red = led.green = led.blue = 0;
-        }
-
-        float LED_CORRECTION = -110.0f;
-        float angle01 = (normalize_angle(best_angle + LED_CORRECTION) + 180.0f) / 360.0f;
-        int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
-        image->leds[pin].green = 30;
-
-        everloop->Write(image);
-
-        // ——— Guarda WAV y publica MQTT —
-        outfile.write(
-            reinterpret_cast<const char *>(best_output.data()),
-            best_output.size() * sizeof(int16_t));
     }
 
-    outfile.close();
+    for (size_t i = 0; i < NUM_CHANNELS; i++)
+    {
+        // In theory this isn't needed because the ofstream uses RAII and close the file handle automatically
+        // According to the docs: Note that any open file is automatically closed when the ofstream object is destroyed.
+        filehandles[i].close();
+    }
 }
