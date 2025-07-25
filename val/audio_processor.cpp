@@ -24,11 +24,11 @@ static void write_wav_header(
     std::ofstream &out,
     uint32_t sample_rate,
     uint16_t bits_per_sample,
-    uint16_t num_channels,
+    uint16_t num_channels_wav,
     uint32_t data_size)
 {
-    uint32_t byte_rate = sample_rate * num_channels * bits_per_sample / 8;
-    uint16_t block_align = num_channels * bits_per_sample / 8;
+    uint32_t byte_rate = sample_rate * num_channels_wav * bits_per_sample / 8;
+    uint16_t block_align = num_channels_wav * bits_per_sample / 8;
     uint32_t chunk_size = 36 + data_size;
 
     out.seekp(0, std::ios::beg);
@@ -41,7 +41,7 @@ static void write_wav_header(
     uint16_t audio_format = 1; // PCM
     out.write(reinterpret_cast<const char *>(&subchunk1_size), 4);
     out.write(reinterpret_cast<const char *>(&audio_format), 2);
-    out.write(reinterpret_cast<const char *>(&num_channels), 2);
+    out.write(reinterpret_cast<const char *>(&num_channels_wav), 2);
     out.write(reinterpret_cast<const char *>(&sample_rate), 4);
     out.write(reinterpret_cast<const char *>(&byte_rate), 4);
     out.write(reinterpret_cast<const char *>(&block_align), 2);
