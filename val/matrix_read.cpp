@@ -19,7 +19,7 @@
 #include "audio_processor.hpp"
 #include "utils.hpp"
 
-std::atomic<bool> running(false);
+std::atomic<bool> running(true);
 
 // Parámetros CLI
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
         std::ref(queue),
         FLAGS_duration);
 
-    std::string wav_name = "recording";
+    std::string wav_name = "-recording.wav";
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
         record_all_channels,
