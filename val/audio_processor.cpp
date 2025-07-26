@@ -103,7 +103,7 @@ void record_all_channels(
 
     for (size_t i = 0; i < NUM_CHANNELS; i++)
     {
-        std::string wavname = "ch" + std::to_string(i) + "_" + time_str + initial_wav_filename;
+        std::string wavname = "ch" + std::to_string(i+1) + "-" + time_str + initial_wav_filename;
         filenames[i] = wavname;
         filehandles[i] = std::move(std::ofstream(wavname, std::ios::binary)); // Is the move needed?
         if (!filehandles[i].is_open())
