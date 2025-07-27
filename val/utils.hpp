@@ -4,6 +4,9 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <algorithm>
+#include <cctype>
+#include <locale>
 
 template <typename T>
 class SafeQueue
@@ -47,3 +50,19 @@ struct AudioBlock
 {
     std::vector<std::vector<int16_t>> samples;
 };
+
+// Trim string from the start (in place)
+inline void ltrim_string(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch)
+                                    { return !std::isspace(ch); }));
+}
+
+// Trim string from the end (in place)
+inline void rtrim_string(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch)
+                         { return !std::isspace(ch); })
+                .base(),
+            s.end());
+}
