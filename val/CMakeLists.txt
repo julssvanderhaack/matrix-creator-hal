@@ -1,5 +1,5 @@
-project(matrix_read C CXX)
 cmake_minimum_required(VERSION 3.5)
+project(matrix_read C CXX)
 
 # Enable extra warnings. Not needed but keeps consistency
 include (../cmake/FatalWarnings.cmake)
