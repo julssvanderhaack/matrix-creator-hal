@@ -40,9 +40,8 @@ int main(int argc, char *argv[])
         "  --duration  : Duración en segundos de la grabación (por defecto: 5)\n"
         "                   Si se pone duration 0 el programa correrá de forma continua\n"
         "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n"
-    	"  --filename  : The filename of the recorded files\n"
-    	"  --folder    : The folder, indicating where to save the recorded files (default: current directory)\n"
-	);
+        "  --filename  : The filename of the recorded files\n"
+        "  --folder    : The folder, indicating where to save the recorded files (default: current directory)\n");
 
     for (int i = 1; i < argc; ++i)
     {
@@ -98,7 +97,6 @@ int main(int argc, char *argv[])
         FLAGS_duration,
         FLAGS_folder,
         FLAGS_filename);
-
 
     // Esperar hilos
     capture_thread.join();

@@ -9,12 +9,11 @@
 #include <array>
 using namespace std::literals::chrono_literals;
 
-
-#define SPEED_OF_SOUND 343.0f // Velocidad del sonido (m/s)
-#define MIC_DISTANCE 0.04f    // Distancia entre micrófonos adyacentes (m)
-#define NUM_CHANNELS 8        // Number of microphones in the matrix device
-#define BITS_PER_SAMPLE 16    // Bits per sample of the recorded audio
-#define BITS_PER_BYTE 8       // Each byte has 8 bits
+#define SPEED_OF_SOUND 343.0f   // Velocidad del sonido (m/s)
+#define MIC_DISTANCE 0.04f      // Distancia entre micrófonos adyacentes (m)
+#define NUM_CHANNELS 8          // Number of microphones in the matrix device
+#define BITS_PER_SAMPLE 16      // Bits per sample of the recorded audio
+#define BITS_PER_BYTE 8         // Each byte has 8 bits
 #define SAMPLES_PER_BLOCK 512.0 // Each block has 512 samples, and the adquisition thread is blocked otherwise
 
 // Prototipo WAV
@@ -72,7 +71,7 @@ void capture_audio(
     running = false;
 }
 
-//Recordings
+// Recordings
 void record_all_channels_wav(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
@@ -138,13 +137,17 @@ void record_all_channels_wav(
     }
 
     // Default to current folder
-    if (folder.empty()) {
-      folder = ".";
-    } else { // Remove last / of folder, we add it ourselfs
-      auto last_character_folder = folder.back();
-      if (last_character_folder == '/') {
-        folder.pop_back();
-      }
+    if (folder.empty())
+    {
+        folder = ".";
+    }
+    else
+    { // Remove last / of folder, we add it ourselfs
+        auto last_character_folder = folder.back();
+        if (last_character_folder == '/')
+        {
+            folder.pop_back();
+        }
     }
 
     std::array<std::string, NUM_CHANNELS> filenames;
@@ -170,8 +173,8 @@ void record_all_channels_wav(
         if (!queue.pop(block))
         {
             // std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            double f = frequency/1.0;
-            auto time =((1.0/f)*SAMPLES_PER_BLOCK*1000.0);
+            double f = frequency / 1.0;
+            auto time = ((1.0 / f) * SAMPLES_PER_BLOCK * 1000.0);
             auto s_ms = (1ms * time);
             // std::cerr << "Sleeping for " << time << std::endl;
             std::this_thread::sleep_for(s_ms);
@@ -259,13 +262,17 @@ void record_all_channels_raw(
         }
     }
 
-    if (folder.empty()) { // Default to current folder
-      folder = ".";
-    } else { // Remove last / from folder name, we add it ourselfs
-      auto last_character_folder = folder.back();
-      if (last_character_folder == '/') {
-        folder.pop_back();
-      }
+    if (folder.empty())
+    { // Default to current folder
+        folder = ".";
+    }
+    else
+    { // Remove last / from folder name, we add it ourselfs
+        auto last_character_folder = folder.back();
+        if (last_character_folder == '/')
+        {
+            folder.pop_back();
+        }
     }
 
     std::array<std::string, NUM_CHANNELS> filenames;
@@ -290,8 +297,8 @@ void record_all_channels_raw(
         if (!queue.pop(block))
         {
             // std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            double f = frequency/1.0;
-            double time =((1.0/f)*SAMPLES_PER_BLOCK*1000.0);
+            double f = frequency / 1.0;
+            double time = ((1.0 / f) * SAMPLES_PER_BLOCK * 1000.0);
             auto s_ms = (1ms * time);
             // std::cerr << "Sleeping for " << time << std::endl;
             std::this_thread::sleep_for(s_ms);
