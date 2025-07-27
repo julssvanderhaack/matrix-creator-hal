@@ -23,4 +23,12 @@ void record_all_channels_wav(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
+    std::string folder,
     std::string initial_wav_filename);
+
+void record_all_channels_raw(
+    SafeQueue<AudioBlock> &queue,
+    uint32_t frequency,
+    int duration,
+    std::string folder,
+    std::string initial_raw_filename);

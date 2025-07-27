@@ -25,6 +25,8 @@ std::atomic<bool> running(true);
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
 DEFINE_int32(duration, 0, "Segundos a grabar (por defecto, 0=continuo). De momento no guarda las cosas en grabacion continua");
 DEFINE_int32(gain, 3, "Ganancia del micrófono (dB)");
+DEFINE_string(filename, "recording", "The filename of the recorded files");
+DEFINE_string(folder, "./", "The filename of the recorded files");
 
 int main(int argc, char *argv[])
 {
@@ -37,7 +39,10 @@ int main(int argc, char *argv[])
         "  --frequency : Frecuencia de muestreo en Hz (por defecto: 16000)\n"
         "  --duration  : Duración en segundos de la grabación (por defecto: 5)\n"
         "                   Si se pone duration 0 el programa correrá de forma continua\n"
-        "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n");
+        "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n"
+    	"  --filename  : The filename of the recorded files\n"
+    	"  --folder    : The folder, indicating where to save the recorded files (default: current directory)\n"
+	);
 
     for (int i = 1; i < argc; ++i)
     {
@@ -76,6 +81,8 @@ int main(int argc, char *argv[])
     // Cola de audio
     SafeQueue<AudioBlock> queue;
 
+    running = true;
+
     // Hilo de captura
     std::thread capture_thread(
         capture_audio,
@@ -83,20 +90,19 @@ int main(int argc, char *argv[])
         std::ref(queue),
         FLAGS_duration);
 
-    std::string wav_name = "-recording.wav";
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
-        record_all_channels_wav,
+        record_all_channels_raw,
         std::ref(queue),
         FLAGS_frequency,
         FLAGS_duration,
-        wav_name);
+        FLAGS_folder,
+        FLAGS_filename);
 
-    running = true; // TODO(Gonzalo): Is this running needed
 
     // Esperar hilos
     capture_thread.join();
-    running = false; // TODO(Gonzalo): Is this running needed
+    running = false; // Signal the recording thread to stop
     processing_thread.join();
 
     return 0;
