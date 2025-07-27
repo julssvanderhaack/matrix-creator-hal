@@ -47,7 +47,7 @@ static void write_wav_header(
 }
 
 // Captura multicanal
-void capture_audio_wav(
+void capture_audio(
     matrix_hal::MicrophoneArray *mic_array,
     SafeQueue<AudioBlock> &queue,
     int duration)
