@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     // Hilo de captura
     std::thread capture_thread(
-        capture_audio,
+        capture_audio_wav,
         &mic_array,
         std::ref(queue),
         FLAGS_duration);

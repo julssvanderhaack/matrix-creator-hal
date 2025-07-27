@@ -15,6 +15,7 @@
 #define BITS_PER_BYTE 8       // Each byte has 8 bits
 
 // Prototipo WAV
+// TODO: This function is wrong the matlab and android players don't like it
 static void write_wav_header(
     std::ofstream &out,
     uint32_t sample_rate,
@@ -46,7 +47,7 @@ static void write_wav_header(
 }
 
 // Captura multicanal
-void capture_audio(
+void capture_audio_wav(
     matrix_hal::MicrophoneArray *mic_array,
     SafeQueue<AudioBlock> &queue,
     int duration)

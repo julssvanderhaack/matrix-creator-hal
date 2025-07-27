@@ -14,7 +14,7 @@ extern mqtt::async_client client;
 extern const std::string BEAMFORMED_TOPIC;
 
 // Prototipos
-void capture_audio(
+void capture_audio_wav(
     matrix_hal::MicrophoneArray *mic_array,
     SafeQueue<AudioBlock> &queue,
     int duration);
