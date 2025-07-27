@@ -25,3 +25,6 @@ target_link_libraries(matrix_read matrix_creator_hal)
 target_link_libraries(matrix_read ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(matrix_read ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 target_link_libraries(matrix_read ${GFLAGS_LIB})
+
+install(TARGETS matrix_read DESTINATION bin)
+
