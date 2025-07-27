@@ -70,7 +70,7 @@ void capture_audio(
 }
 
 // Delay-and-Sum con barrido de ángulos + Everloop
-void record_all_channels(
+void record_all_channels_wav(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,
@@ -81,8 +81,12 @@ void record_all_channels(
 
     if (initial_wav_filename.empty())
     {
-        initial_wav_filename = "output.wav";
+        initial_wav_filename = "output";
     }
+
+    // Trim spaces in the filenames strings
+    rtrim_string(initial_wav_filename);
+    ltrim_string(initial_wav_filename);
 
     auto time_str = std::string();
     auto now = std::chrono::system_clock::now();
@@ -99,12 +103,42 @@ void record_all_channels(
         std::cerr << "Error leyendo fecha" << std::endl;
     }
 
+    std::string desired_extension = ".wav";
+    std::string maybe_extension = std::string("");
+    if (initial_wav_filename.length() < 4)
+    {
+        maybe_extension = desired_extension;
+    }
+    else
+    {
+        auto idx = initial_wav_filename.rfind('.');
+        if (idx != std::string::npos)
+        {
+            // There is a . in the filename, check if the extension is .wav (rfind finds the last .)
+            std::string file_extension = initial_wav_filename.substr(idx + 1);
+            if (file_extension != desired_extension)
+            {
+                // The file has other extension
+                maybe_extension = desired_extension;
+            }
+            else
+            {
+                // The file has .wav as an extension
+                maybe_extension = std::string("");
+            }
+        }
+        else // There is no extension
+        {
+            maybe_extension = desired_extension;
+        }
+    }
+
     std::array<std::string, NUM_CHANNELS> filenames;
     std::array<std::ofstream, NUM_CHANNELS> filehandles;
 
     for (size_t i = 0; i < NUM_CHANNELS; i++)
     {
-        std::string wavname = "ch" + std::to_string(i+1) + "-" + time_str + initial_wav_filename;
+        std::string wavname = "ch" + std::to_string(i + 1) + "-" + time_str + initial_wav_filename + maybe_extension;
         filenames[i] = wavname;
         filehandles[i] = std::move(std::ofstream(wavname, std::ios::binary)); // Is the move needed?
         if (!filehandles[i].is_open())

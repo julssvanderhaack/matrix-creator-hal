@@ -19,7 +19,7 @@ void capture_audio(
     SafeQueue<AudioBlock> &queue,
     int duration);
 
-void record_all_channels(
+void record_all_channels_wav(
     SafeQueue<AudioBlock> &queue,
     uint32_t frequency,
     int duration,

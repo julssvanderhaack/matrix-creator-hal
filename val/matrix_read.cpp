@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     std::string wav_name = "-recording.wav";
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
-        record_all_channels,
+        record_all_channels_wav,
         std::ref(queue),
         FLAGS_frequency,
         FLAGS_duration,
