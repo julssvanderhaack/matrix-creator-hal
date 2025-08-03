@@ -1,6 +1,8 @@
-// audio_processor.hpp
-#ifndef AUDIO_PROCESSOR_HPP
-#define AUDIO_PROCESSOR_HPP
+// FILE    : audio_processor.hpp
+// Autor   : Julio Albisua
+// INFO    : En este código se procesa el audio de los micrófonos de la rpi 
+//           Se retrasmite el audio por mqtt en el canal audio/beanformed
+//           y se enciende el led más cercano a la DOA calculada
 
 #include <vector>
 #include <atomic>
@@ -27,7 +29,6 @@ void process_beamforming(
     uint32_t frequency,
     int duration,
     matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image
+    matrix_hal::EverloopImage* image,
+    std::string filename
 );
-
-#endif // AUDIO_PROCESSOR_HPP

@@ -1,4 +1,4 @@
-// matrix_read.cpp
+// FILE    : matrix_read.cpp
 // Autor   : Julio Albisua
 // INFO    : coge el audio de los 8 micrófonos, los procesa por beamforming de banda estrecha,
 //           enciende en Everloop el LED según el DOA, y envía el audio por MQTT
@@ -33,6 +33,7 @@ std::atomic<bool> running(true);
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
 DEFINE_int32(duration,  5,     "Segundos a grabar (0=continuo)");
 DEFINE_int32(gain,      3,     "Ganancia del micrófono (dB)");
+DEFINE_string(filename, "beamformed_output.wav", "The filename of the beamformed audio");
 
 int main(int argc, char *argv[]) {
     // Mensaje de ayuda personalizado
@@ -43,10 +44,12 @@ int main(int argc, char *argv[]) {
         "Parámetros:\n"
         "  --frequency : Frecuencia de muestreo en Hz (por defecto: 16000)\n"
         "  --duration  : Duración en segundos de la grabación (por defecto: 5)\n"
-	"                   Si se pone duration 0 el programa correrá de forma continua\n"
+	    "                   Si se pone duration 0 el programa correrá de forma continua\n"
+        "  --filename  : The filename of the beamformed audio\n "
+        "                   default: beamformed_output.wav\n"    
         "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n"
     );
-
+ma
     for (int i = 1; i < argc; ++i) {
         std::string a(argv[i]);
         if (a == "--help" || a == "-h") {
@@ -65,7 +68,9 @@ int main(int argc, char *argv[]) {
     matrix_hal::MicrophoneCore  mic_core(mic_array);
     mic_array.Setup(&bus);
     mic_array.SetSamplingRate(FLAGS_frequency);
+   
     if (FLAGS_gain > 0) mic_array.SetGain(FLAGS_gain);
+
     mic_array.ShowConfiguration();
     mic_core.Setup(&bus);
 
@@ -86,7 +91,7 @@ int main(int argc, char *argv[]) {
 
     // Cola de audio
     SafeQueue<AudioBlock> queue;
-
+    running = true;
     // Hilo de captura
     std::thread capture_thread(
         capture_audio,
@@ -102,8 +107,8 @@ int main(int argc, char *argv[]) {
         FLAGS_frequency,
         FLAGS_duration,
         &everloop,
-        &image
-    );
+        &image,
+        FLAGS_filename);
 
     // Esperar hilos
     capture_thread.join();

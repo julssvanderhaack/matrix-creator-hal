@@ -1,4 +1,9 @@
-// audio_processor.cpp
+// FILE    : audio_processor.cpp
+// Autor   : Julio Albisua
+// INFO    : En este código se procesa el audio de los micrófonos de la rpi 
+//           Se retrasmite el audio por mqtt en el canal audio/beanformed
+//           y se enciende el led más cercano a la DOA calculada
+
 #include "audio_processor.hpp"
 #include <iostream>
 #include <string>
@@ -75,16 +80,17 @@ void process_beamforming(
     uint32_t frequency,
     int duration,
     matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image
-) {
+    matrix_hal::EverloopImage* image,
+    std::string filename) 
+    {
     const uint16_t num_channels   = 8;
     const uint16_t bits_per_sample= 16;
     uint32_t estimated_samples    = frequency * duration;
     uint32_t data_size            = estimated_samples * bits_per_sample / 8;
 
-    std::ofstream outfile("beamformed_output.wav", std::ios::binary);
+    std::ofstream outfile(filename, std::ios::binary);
     if (!outfile.is_open()) {
-        std::cerr << "Error abriendo beamformed_output.wav\n";
+        std::cerr << "Error abriendo " << filename << std::endl; 
         running = false;
         return;
     }
@@ -157,19 +163,19 @@ void process_beamforming(
         );
 
         // Old MQTT code
-        // mqtt::message_ptr pubmsg = mqtt::make_message(
-        //     BEAMFORMED_TOPIC,
-        //     reinterpret_cast<const char*>(best_output.data()),
-        //     best_output.size() * sizeof(int16_t)
-        // );
-        // pubmsg->set_qos(1);
-        // try {
-        //     client.publish(pubmsg);
-        // } catch (const mqtt::exception &exc) {
-        //     std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-        // }
+         mqtt::message_ptr pubmsg = mqtt::make_message(
+             BEAMFORMED_TOPIC,
+             reinterpret_cast<const char*>(best_output.data()),
+             best_output.size() * sizeof(int16_t)
+         );
+         pubmsg->set_qos(1);
+         try {
+             client.publish(pubmsg);
+         } catch (const mqtt::exception &exc) {
+             std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
+         }
 
-        for (auto &elem : best_output) {
+        /*for (auto &elem : best_output) {
             std::string st = std::to_string(elem);
             mqtt::message_ptr pubmsg = mqtt::make_message(BEAMFORMED_TOPIC, st);
             pubmsg->set_qos(1);
@@ -178,7 +184,8 @@ void process_beamforming(
             } catch (const mqtt::exception &exc) {
                 std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
             }
-        }
+	
+        }*/
     }
 
     outfile.close();
