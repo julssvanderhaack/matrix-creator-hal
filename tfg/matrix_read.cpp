@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
         "                   default: beamformed_output.wav\n"    
         "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n"
     );
-ma
+
     for (int i = 1; i < argc; ++i) {
         std::string a(argv[i]);
         if (a == "--help" || a == "-h") {
