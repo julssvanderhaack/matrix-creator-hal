@@ -208,11 +208,29 @@ int AudioConsumer::len_async_queue()
 
 int add(int i, int j) { return i + j; }
 
+std::vector<std::vector<int16_t>> test_vec()
+{
+    std::vector<std::vector<int16_t>> ret{};
+    for (size_t i = 0; i < 8; i++)
+    {
+        std::vector<int16_t> v{};
+        for (size_t j = 0; j < 512; j++)
+        {
+            v.push_back(i * 512 + j);
+        }
+        ret.push_back(v);
+    }
+
+    return ret;
+}
+
 PYBIND11_MODULE(matrix_pybind, m)
 {
     m.doc() = "pybind11 example plugin"; // optional module docstring
 
     m.def("add", &add, "A function that adds two numbers");
+
+    m.def("v", &test_vec, "A function that return a multidimensional vector of int16_t");
 
     py::classh<AudioConsumer>(m, "AudioConsumer")
         .def(py::init<const int, const int>())

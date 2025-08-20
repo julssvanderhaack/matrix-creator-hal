@@ -7,6 +7,7 @@
 #include <thread>
 #include <random>
 #include <atomic>
+#include <cstdint>
 
 #define BLOCK_SIZE 512
 
