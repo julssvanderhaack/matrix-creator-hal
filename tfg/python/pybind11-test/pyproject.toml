@@ -5,3 +5,6 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "matrix_pybind"
 version = "0.1.0"
+dependencies = [
+    "ipython>=9.4.0",
+]
