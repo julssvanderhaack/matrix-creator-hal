@@ -14,7 +14,7 @@ ADM_EXTRA_WARNINGS()
 
 add_subdirectory(../../../cpp/driver driver)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++17)
 find_package(Threads)
 
 set(PYBIND11_FINDPYTHON ON)
