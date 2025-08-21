@@ -1,4 +1,4 @@
-import _matrix_hal as hal
+import matrix_pybind_bindings as hal
 
 uv = hal.uv()
 imu = hal.imu()

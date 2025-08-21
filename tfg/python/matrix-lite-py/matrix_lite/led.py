@@ -1,5 +1,5 @@
 from matrix_lite import colour
-from _matrix_hal import everloop
+from matrix_pybind_bindings import everloop
 
 _everloop = everloop()
 length = _everloop.length

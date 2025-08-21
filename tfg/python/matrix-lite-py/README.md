@@ -39,7 +39,7 @@ python3 -m pip install --user matrix-lite
 ```
 
 # Usage
-The matrix-lite package contains a `matrix_lite` & `_matrix_hal` Python module. `_matrix_hal` is the direct HAL implementation. `matrix_lite` contains small abstractions for `_matrix_hal`.
+The matrix-lite package contains a `matrix_lite` & `matrix_pybind_bindings` Python module. `matrix_pybind_bindings` is the direct HAL implementation. `matrix_lite` contains small abstractions for `matrix_pybind_bindings`.
 
 ## Everloop
 ```python

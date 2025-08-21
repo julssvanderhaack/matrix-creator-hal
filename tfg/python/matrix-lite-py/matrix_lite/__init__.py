@@ -1,4 +1,4 @@
-import _matrix_hal as hal
+import matrix_pybind_bindings as hal
 
 __name__ = "matrix_lite"
 __all__ = ["led","sensors","gpio","info"]
