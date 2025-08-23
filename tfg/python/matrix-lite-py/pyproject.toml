@@ -5,3 +5,9 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "matrix_pybind_bindings"
 version = "0.1.0"
+description = "Python bindings for the matrix creator"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ipython>=8.18.1",
+]
