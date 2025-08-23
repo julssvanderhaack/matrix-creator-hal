@@ -17,12 +17,13 @@ find_library (WIRINGPI_LIB NAMES wiringPi)
 find_library (WIRINGPI_DEV_LIB NAMES wiringPiDev)
 
 pybind11_add_module(
-	matrix_pybind_bindings
-	hal_wrapper/matrix.cpp
-	hal_wrapper/drivers/everloop.cpp
-	hal_wrapper/drivers/gpio.cpp
-	hal_wrapper/drivers/info.cpp
-	hal_wrapper/drivers/sensors.cpp
+ matrix_pybind_bindings
+ hal_wrapper/matrix.cpp
+ hal_wrapper/drivers/everloop.cpp
+ hal_wrapper/drivers/gpio.cpp
+ hal_wrapper/drivers/info.cpp
+ hal_wrapper/drivers/sensors.cpp
+ hal_wrapper/drivers/microphones.cpp
 )
 set_property(TARGET matrix_pybind_bindings PROPERTY CXX_STANDARD 11)
 
