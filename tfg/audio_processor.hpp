@@ -24,11 +24,11 @@ void capture_audio(
     int duration
 );
 
-void process_beamforming(
-    SafeQueue<AudioBlock>& queue,
-    uint32_t frequency,
-    int duration,
-    matrix_hal::Everloop* everloop,
-    matrix_hal::EverloopImage* image,
-    std::string filename
+
+void write_wav_header(
+    std::ofstream &out,
+    uint32_t sample_rate,
+    uint16_t bits_per_sample,
+    uint16_t num_channels,
+    uint32_t data_size
 );
