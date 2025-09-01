@@ -18,7 +18,7 @@
 #include "../cpp/driver/everloop_image.h"
 
 #include "audio_processor.hpp"
-#include "utils.hpp"
+#include "queue.hpp"
 // Configuración de pybind.h
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
