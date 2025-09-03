@@ -1,5 +1,6 @@
 project(matrix_read C CXX)
 cmake_minimum_required(VERSION 3.5)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include (../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
