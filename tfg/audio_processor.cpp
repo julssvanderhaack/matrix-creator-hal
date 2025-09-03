@@ -5,6 +5,7 @@
 //           y se enciende el led más cercano a la DOA calculada
 
 #include "audio_processor.hpp"
+#include <cstdint>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <cctype>
 #include <locale>
+#include <vector>
 
 
 inline void ltrim_string(std::string &s)
@@ -215,3 +217,18 @@ void record_all_channels_wav(
     }
 }
 
+std::vector<std::vector<int16_t>> capture_audio_sync(matrix_hal::MicrophoneArray *mic_array) {
+    const uint32_t BLOCK_SIZE = mic_array->NumberOfSamples();
+    const uint16_t CHANNELS = mic_array->Channels();
+
+    mic_array->Read();
+    AudioBlock block;
+    block.samples.resize(CHANNELS, std::vector<int16_t>(BLOCK_SIZE));
+    for (uint32_t s = 0; s < BLOCK_SIZE; ++s) {
+        for (uint16_t ch = 0; ch < CHANNELS; ++ch) {
+            block.samples[ch][s] = mic_array->At(s, ch);
+        }
+    }
+
+    return block.samples;
+}
