@@ -18,8 +18,9 @@
 
 #include "audio_processor.hpp"
 #include "queue.hpp"
-#include <fstream>
+#include <chrono>
 #include <cmath>
+#include <fstream>
 
 #define SPEED_OF_SOUND 343.0f // Velocidad del sonido (m/s)
 #define MIC_DISTANCE 0.04f    // Distancia entre micrófonos adyacentes (m)
@@ -239,12 +240,8 @@ int main(int argc, char *argv[])
     SafeQueue<AudioBlock> queue;
     running = true;
     // Hilo de captura
-    std::thread capture_thread(
-        capture_audio,
-        &mic_array,
-        std::ref(queue),
-        std::ref(running),
-        FLAGS_duration);
+    std::thread capture_thread(capture_audio, &mic_array, std::ref(queue),
+                               std::ref(running));
 
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
@@ -256,9 +253,11 @@ int main(int argc, char *argv[])
         &image,
         FLAGS_filename);
 
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(5s);
+    running = false;
     // Esperar hilos
     capture_thread.join();
-    running = false;
     processing_thread.join();
 
     // Desconectar MQTT
