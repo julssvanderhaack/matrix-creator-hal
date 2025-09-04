@@ -16,7 +16,6 @@
 #include <locale>
 #include <vector>
 
-
 inline void ltrim_string(std::string &s)
 {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch)
@@ -191,12 +190,14 @@ void record_all_channels_wav(
     while (running)
     {
         AudioBlock block;
+        // TODO: We could use wait_pop and avoid this monstruosity.
         if (!queue.pop(block))
         {
-           using namespace std::literals::chrono_literals;
+            using namespace std::literals::chrono_literals;
             double f = frequency / 1.0;
-            auto time = ((1.0 / f) * SAMPLES_PER_BLOCK * 1000.0);
-            auto s_ms = (1ms * time);
+            // Time to read 512 samples, and avoid wakeups during the blocking of the reading thread
+            auto time = ((1.0 / f) * SAMPLES_PER_BLOCK);
+            auto s_ms = (1ms * time * 1000.0); // *10e3 for converting s to ms.
             std::this_thread::sleep_for(s_ms);
             continue;
         }
