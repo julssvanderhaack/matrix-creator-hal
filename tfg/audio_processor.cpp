@@ -7,6 +7,7 @@
 #include "audio_processor.hpp"
 #include "queue.hpp"
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <atomic>
 
 constexpr auto WAV_HEADER_LEN = 44L;
 
@@ -78,6 +80,7 @@ void write_wav_header(
 void capture_audio(
     matrix_hal::MicrophoneArray *mic_array,
     SafeQueue<AudioBlock> &queue,
+    std::atomic_bool& running,
     int duration)
 {
     const uint32_t BLOCK_SIZE = mic_array->NumberOfSamples();
@@ -100,6 +103,7 @@ void capture_audio(
 void record_all_channels_wav(
     SafeQueue<AudioBlock> &queue,
     matrix_hal::MicrophoneArray *mic_array,
+    std::atomic_bool& running,
     int duration,
     std::string folder,
     std::string initial_wav_filename)

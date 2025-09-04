@@ -1,6 +1,6 @@
 // FILE    : audio_processor.hpp
 // Autor   : Julio Albisua
-// INFO    : En este código se procesa el audio de los micrófonos de la rpi 
+// INFO    : En este código se procesa el audio de los micrófonos de la rpi
 //           Se retrasmite el audio por mqtt en el canal audio/beanformed
 //           y se enciende el led más cercano a la DOA calculada
 
@@ -13,7 +13,6 @@
 #include "queue.hpp"
 
 // Variables globales
-extern std::atomic<bool> running;
 extern mqtt::async_client client;
 extern const std::string BEAMFORMED_TOPIC;
 
@@ -21,6 +20,7 @@ extern const std::string BEAMFORMED_TOPIC;
 void capture_audio(
     matrix_hal::MicrophoneArray* mic_array,
     SafeQueue<AudioBlock>& queue,
+    std::atomic_bool& running,
     int duration
 );
 

@@ -243,6 +243,7 @@ int main(int argc, char *argv[])
         capture_audio,
         &mic_array,
         std::ref(queue),
+        std::ref(running),
         FLAGS_duration);
 
     // Hilo de beamforming + Everloop
