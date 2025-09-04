@@ -43,6 +43,8 @@ void write_wav_header(
     uint16_t block_align = num_channels * bits_per_sample / 8;
     uint32_t chunk_size = 36 + data_size;
 
+    auto old_pos = out.tellp();
+
     out.seekp(0, std::ios::beg);
     out.write("RIFF", 4);
     out.write(reinterpret_cast<const char *>(&chunk_size), 4);
@@ -60,6 +62,12 @@ void write_wav_header(
     out.write(reinterpret_cast<const char *>(&bits_per_sample), 2);
     out.write("data", 4);
     out.write(reinterpret_cast<const char *>(&data_size), 4);
+
+    if (old_pos != 0 && old_pos != -1) {
+      // We sometimes need to update the wav header (the lenght can change),
+      // so if we weren't at the start of the file, restore the old position
+      out.seekp(old_pos);
+    }
 }
 
 // Captura multicanal
