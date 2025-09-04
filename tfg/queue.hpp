@@ -1,6 +1,7 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <atomic>
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -35,6 +36,11 @@ public:
         item = queue_.front();
         queue_.pop();
     }
+
+    bool empty() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return queue_.empty();
+    }
 };
 
 struct AudioBlock {
@@ -42,4 +48,3 @@ struct AudioBlock {
 };
 
 #endif
-
