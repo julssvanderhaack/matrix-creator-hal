@@ -5,6 +5,7 @@
 //           y se enciende el led más cercano a la DOA calculada
 
 #include "audio_processor.hpp"
+#include "queue.hpp"
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -15,6 +16,8 @@
 #include <cctype>
 #include <locale>
 #include <vector>
+
+constexpr auto WAV_HEADER_LEN = 44L;
 
 inline void ltrim_string(std::string &s)
 {
@@ -37,17 +40,17 @@ void write_wav_header(
     uint32_t sample_rate,
     uint16_t bits_per_sample,
     uint16_t num_channels,
-    uint32_t data_size)
+    uint32_t data_size_bytes)
 {
     uint32_t byte_rate = sample_rate * num_channels * bits_per_sample / 8;
     uint16_t block_align = num_channels * bits_per_sample / 8;
-    uint32_t chunk_size = 36 + data_size;
+    uint32_t size_with_header = 36 + data_size_bytes;
 
     auto old_pos = out.tellp();
 
     out.seekp(0, std::ios::beg);
     out.write("RIFF", 4);
-    out.write(reinterpret_cast<const char *>(&chunk_size), 4);
+    out.write(reinterpret_cast<const char *>(&size_with_header), 4);
     out.write("WAVE", 4);
     out.write("fmt ", 4);
 
@@ -61,7 +64,7 @@ void write_wav_header(
     out.write(reinterpret_cast<const char *>(&block_align), 2);
     out.write(reinterpret_cast<const char *>(&bits_per_sample), 2);
     out.write("data", 4);
-    out.write(reinterpret_cast<const char *>(&data_size), 4);
+    out.write(reinterpret_cast<const char *>(&data_size_bytes), 4);
 
     if (old_pos != 0 && old_pos != -1) {
       // We sometimes need to update the wav header (the lenght can change),
