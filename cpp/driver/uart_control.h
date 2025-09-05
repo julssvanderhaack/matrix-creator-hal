@@ -24,6 +24,9 @@
 namespace matrix_hal {
 
 class UartControl : public MatrixDriver {
+private:
+  std::unique_lock<std::mutex> lock_;
+
  public:
   UartControl();
   void Setup(MatrixIOBus *bus);
