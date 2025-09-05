@@ -1,6 +1,6 @@
-# Need pybind11 installed 
+# Need pybind11 installed
 
-# To use this is recommended 
+# To use this is recommended
 # This often is a good way to get the current Python, works in environments:
 # cmake -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)") ..
 
@@ -11,6 +11,7 @@ project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX C)
 # Enable extra warnings. Not needed but keeps consistency
 include (../../../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(../../../cpp/driver driver)
 
