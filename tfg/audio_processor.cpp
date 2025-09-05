@@ -15,10 +15,10 @@
 #include <fstream>
 #include <iostream>
 #include <locale>
+#include <mqtt/client.h>
 #include <string>
 #include <thread>
 #include <vector>
-#include <atomic>
 
 constexpr auto WAV_HEADER_LEN = 44L;
 
@@ -235,5 +235,77 @@ void record_all_channels_wav_sync(matrix_hal::MicrophoneArray *mic_array,
         new_audio_len + initial_size_with_header[i] - WAV_HEADER_LEN);
     filehandles_out[i].write(reinterpret_cast<const char *>(new_audio.data()),
                              new_audio_len);
+  }
+}
+
+bool connect_sync_mqtt_client(mqtt::client &client,
+                              mqtt::connect_options *conn_opts = nullptr) {
+  try {
+    if (conn_opts == nullptr) {
+      mqtt::connect_options connOpts;
+      connOpts.set_clean_session(true);
+      client.connect(connOpts);
+    } else {
+      client.connect(*conn_opts);
+    }
+  } catch (const mqtt::exception &exc) {
+    std::cerr << "Connect sync MQTT error" << exc.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool disconnect_sync_mqtt_client(mqtt::client &client) {
+  if (client.is_connected()) {
+    try {
+      client.disconnect();
+      return true;
+    } catch (const mqtt::exception &exc) {
+      std::cerr << "Disconnect sync MQTT error" << exc.what() << std::endl;
+      return false;
+    }
+  } else {
+    std::cerr << "Client already disconnected" << std::endl;
+    return false;
+  }
+}
+
+void send_mqtt_sync(mqtt::client &client,
+                    matrix_hal::MicrophoneArray *mic_array, AudioBlock block,
+                    std::string topic_name, int qos = 1,
+                    bool send_bytes = true) {
+  const uint16_t NUM_CHANNELS = mic_array->Channels();
+
+  try {
+    for (size_t i = 0; i < NUM_CHANNELS; i++) {
+      std::string topic = topic_name + "_" + std::to_string(i + 1);
+      auto data = block.samples[i];
+
+      std::stringstream ds;
+      ds << "[";
+
+      for (auto &d : data) {
+        ds << d << ", ";
+      }
+
+      if (!data.empty()) {
+        ds.seekp(-1, ds.cur); // Delete last space (' ')
+      }
+      ds << "]";
+
+      mqtt::message_ptr pubmsg;
+      if (send_bytes) {
+        pubmsg = mqtt::make_message(topic,
+                                    reinterpret_cast<const char *>(data.data()),
+                                    data.size() * sizeof(int16_t));
+      } else {
+        pubmsg = mqtt::make_message(topic, ds.str());
+      }
+
+      pubmsg->set_qos(qos);
+      client.publish(pubmsg);
+    }
+  } catch (const mqtt::exception &exc) {
+    std::cerr << "Sync MQTT error" << exc.what() << std::endl;
   }
 }
