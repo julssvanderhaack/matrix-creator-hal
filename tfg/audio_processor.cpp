@@ -121,6 +121,8 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
     }
   }
 
+  std::array<uint32_t, NUM_CHANNELS_>  audio_lens = {0,0,0,0,0,0,0,0};
+
   // Continue processing while running = true, or we want to drain all the
   // data in the queue, which has data. If we don't drain we can leave the
   // queue with data at the end of the process.
@@ -134,12 +136,11 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
     std::vector<std::vector<int16_t>> audios(
         NUM_CHANNELS_, std::vector<int16_t>(block_size, 0));
 
-    uint32_t audio_len = 0;
     for (size_t i = 0; i < NUM_CHANNELS_; i++) {
       std::vector<int16_t> ch_audio(block.samples[i]);
-      audio_len = audio_len + ch_audio.size() * sizeof(int16_t);
+      audio_lens[i] = audio_lens[i] + ch_audio.size() * sizeof(int16_t);
       write_wav_header(filehandles[i], frequency, BITS_PER_SAMPLE, WAV_CHANNELS,
-                       audio_len);
+                       audio_lens[i]);
 
       // Write inside the while(running) loop, that way we write all the
       // data as soon as we can take it. Also Write automatically advances the
