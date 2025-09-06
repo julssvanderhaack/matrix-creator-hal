@@ -135,3 +135,31 @@ void capture_audio(matrix_hal::MicrophoneArray *mic_array,
   }
   running = false;
 }
+
+
+AudioBlock MockValuesSync() {
+  AudioBlock b{};
+  b.samples = {{}, {}, {}, {}, {}, {}, {}, {}};
+  b.samples[0] = {1, 2, 3};
+  b.samples[1] = {1};
+  return b;
+}
+
+void MockValuesAsync(SafeQueue<AudioBlock> &queue, std::atomic_bool &running) {
+  auto cnt = 0;
+  while (running) {
+    if (cnt == 3) {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(400ms);
+    } else if (cnt >= 4) {
+      continue;
+    }
+
+    AudioBlock b{};
+    b.samples = {{}, {}, {}, {}, {}, {}, {}, {}};
+    b.samples[0] = {1, 2, 3};
+    b.samples[1] = {1};
+    queue.push(b);
+    cnt++;
+  }
+}
