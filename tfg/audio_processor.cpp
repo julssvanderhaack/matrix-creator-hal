@@ -130,7 +130,11 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
     AudioBlock block;
     // This thread is going to sleep until we have an element in the queue, if
     // it's empty
-    queue.wait_pop(block);
+    int ret_pop = queue.wait_pop(block);
+    if (ret_pop == 0) {
+        break; // We are not running and we have no more data in the queue.
+    }
+
 
     uint32_t block_size = block.samples[0].size();
     std::vector<std::vector<int16_t>> audios(
