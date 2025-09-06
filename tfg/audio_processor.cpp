@@ -314,3 +314,109 @@ void send_mqtt_sync(mqtt::client &client,
     std::cerr << "Sync MQTT error" << exc.what() << std::endl;
   }
 }
+
+
+bool connect_async_mqtt_client(mqtt::async_client &client,
+                               AsyncMQTTOptions opts) {
+
+  using namespace std::chrono_literals;
+  try {
+    if (opts.connect_waiting_time_ms == -1) {
+      client.connect(opts.conn_opts)->wait();
+    } else {
+      client.connect(opts.conn_opts)
+          ->wait_for(opts.connect_waiting_time_ms * 1ms);
+    }
+  } catch (const mqtt::exception &exc) {
+    std::cerr << "Connect async MQTT error" << exc.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool disconnect_async_mqtt_client(mqtt::async_client &client, AsyncMQTTOptions opts) {
+  using namespace std::chrono_literals;
+
+  try {
+    int message_count = client.get_pending_delivery_tokens().size();
+    if (opts.wait_for_unsent_messages && message_count != 0) {
+      int retry_cnt = opts.num_retries_send_unsent_messages;
+      while (!client.get_pending_delivery_tokens().empty()) {
+        auto toks = client.get_pending_delivery_tokens();
+        int new_message_count = toks.size();
+        std::this_thread::sleep_for(opts.waiting_unsent_messages_time_ms * 1ms);
+        if (new_message_count == message_count) {
+          retry_cnt--;
+        }
+        if (retry_cnt == 0) {
+          break;
+        }
+      }
+    }
+
+    if (opts.waiting_time_disconnect_ms == -1) {
+      client.disconnect()->wait();
+    } else {
+      client.disconnect()->wait_for(opts.waiting_time_disconnect_ms * 1ms);
+    }
+  } catch (const mqtt::exception &exc) {
+    std::cerr << "Disconnect async MQTT error" << exc.what() << std::endl;
+    return false;
+  }
+  return true;
+}
+
+void send_audio_mqtt_async(matrix_hal::MicrophoneArray *mic_array,
+                     SafeQueue<AudioBlock> &queue, std::atomic_bool &running,
+                     AsyncMQTTOptions mqtt_options, bool drain = true) {
+
+  const uint16_t NUM_CHANNELS = mic_array->Channels();
+
+  mqtt::async_client client{mqtt_options.ip + ":" + mqtt_options.port ,mqtt_options.clientID};
+  connect_async_mqtt_client(client, mqtt_options);
+
+  while (running || (drain && !queue.empty())) {
+    AudioBlock block;
+
+    int ret = queue.wait_pop(block);
+    if (ret == 0) {
+      continue;
+    }
+
+    for (size_t i = 0; i < NUM_CHANNELS; i++) {
+      std::string topic =
+          mqtt_options.base_topic_name + "_" + std::to_string(i + 1);
+      auto data_vec = block.samples[i];
+
+      std::stringstream data_string;
+      data_string << "[";
+
+      for (auto &d : data_vec) {
+        data_string << d << ", ";
+      }
+
+      if (!data_vec.empty()) {
+        data_string.seekp(-1, data_string.cur); // Delete last space (' ')
+      }
+      data_string << "]";
+
+      mqtt::message_ptr pubmsg;
+      if (mqtt_options.send_bytes) {
+        pubmsg = mqtt::make_message(
+            topic, reinterpret_cast<const char *>(data_vec.data()),
+            data_vec.size() * sizeof(int16_t));
+      } else {
+        pubmsg = mqtt::make_message(topic, data_string.str());
+      }
+
+      try {
+        pubmsg->set_qos(mqtt_options.qos);
+        client.publish(pubmsg);
+      } catch (const mqtt::exception &exc) {
+        std::cerr << "Async MQTT publish error" << exc.what() << std::endl;
+      }
+    }
+  }
+
+  disconnect_async_mqtt_client(client, mqtt_options);
+}
