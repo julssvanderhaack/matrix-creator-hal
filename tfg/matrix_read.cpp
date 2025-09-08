@@ -254,6 +254,17 @@ int main(int argc, char *argv[])
     std::this_thread::sleep_for(5s);
     queue.stop_async();
 
+    int retry_count = 5;
+    while (!client.get_pending_delivery_tokens().empty()) {
+        if (retry_count == 0) {
+            std::cerr << "WARNING!: " << " There are " << client.get_pending_delivery_tokens().size()
+            << " pending mqtt messages after 5 sending retries" << std::endl;
+            break;
+        }
+        std::this_thread::sleep_for(time_wait_mqtt_ms * 1ms);
+        retry_count--;
+    }
+
     // Desconectar MQTT
     try
     {
