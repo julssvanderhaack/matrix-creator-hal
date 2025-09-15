@@ -6,15 +6,16 @@
 
 #include "audio_processor.hpp"
 #include "queue.hpp"
-#include <cstdint>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <chrono>
-#include <fstream>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <locale>
+#include <string>
+#include <thread>
 #include <vector>
 
 constexpr auto WAV_HEADER_LEN = 44L;
@@ -243,4 +244,75 @@ std::vector<std::vector<int16_t>> capture_audio_sync(matrix_hal::MicrophoneArray
     }
 
     return block.samples;
+}
+
+void record_all_channels_wav_sync(matrix_hal::MicrophoneArray *mic_array,
+                                  AudioBlock data,
+                                  std::string filename_without_extension) {
+  const uint32_t frequency = mic_array->SamplingRate();
+  const uint32_t BITS_PER_SAMPLE = 16;
+  const uint32_t WAV_CHANNELS = 1;
+  constexpr uint16_t NUM_CHANNELS_ = 8; // Hardcoded because we need constexpr
+  // const uint16_t NUM_CHANNELS = mic_array->Channels();
+
+  if (filename_without_extension.empty()) {
+    filename_without_extension = "output";
+  }
+
+  // Trim spaces in the filenames strings
+  rtrim_string(filename_without_extension);
+  ltrim_string(filename_without_extension);
+
+  std::array<std::string, NUM_CHANNELS_> filenames;
+  std::array<std::ofstream, NUM_CHANNELS_> filehandles_out;
+  std::array<uint32_t, NUM_CHANNELS_> initial_size_with_header{0, 0, 0, 0,
+                                                               0, 0, 0, 0};
+  std::array<std::vector<char>, NUM_CHANNELS_> initial_data{};
+
+  for (size_t i = 0; i < NUM_CHANNELS_; i++) {
+    std::string wavname =
+        filename_without_extension + "_ch_" + std::to_string(i + 1) + ".wav";
+    filenames[i] = wavname;
+    initial_data[i] = std::vector<char>{};
+
+    if (std::filesystem::exists(wavname)) {
+      // We want to append to an already existing file.
+      // From experimenting the best way is to read all the files into a
+      // vector, and the write all the data into the file again, rewritting
+      // the header with the new lenght (the old one + the one of the new
+      // data) before writting the new data.
+
+      std::ifstream filehandle(wavname, std::ios::binary);
+      // Go to the end and get the position for obtaining the length.
+      filehandle.seekg(0, std::ios::end);
+      initial_size_with_header[i] = filehandle.tellg();
+
+      // Go back to the beggining of the file
+      filehandle.seekg(0, std::ios::beg);
+
+      initial_data[i].reserve(initial_size_with_header[i]);
+      initial_data[i].assign(std::istreambuf_iterator<char>(filehandle),
+                             std::istreambuf_iterator<char>());
+    }
+
+    filehandles_out[i] = std::ofstream(wavname, std::ios::binary);
+    if (!filehandles_out[i].is_open()) {
+      std::cerr << "Error abriendo " << wavname << "para grabar" << std::endl;
+      return;
+    }
+  }
+
+  for (size_t i = 0; i < NUM_CHANNELS_; i++) {
+
+    filehandles_out[i].write(
+        reinterpret_cast<const char *>(initial_data[i].data()),
+        initial_data[i].size() * sizeof(char));
+
+    write_wav_header(filehandles_out[i], frequency, BITS_PER_SAMPLE,
+                     WAV_CHANNELS,
+                     initial_size_with_header[i] - WAV_HEADER_LEN);
+    std::vector<int16_t> ch_audio(data.samples[i]);
+    filehandles_out[i].write(reinterpret_cast<const char *>(ch_audio.data()),
+                             ch_audio.size() * sizeof(int16_t));
+  }
 }
