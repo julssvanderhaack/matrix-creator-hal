@@ -4,12 +4,7 @@
 //           Se retrasmite el audio por mqtt en el canal audio/beanformed
 //           y se enciende el led más cercano a la DOA calculada
 
-#include <vector>
-#include <atomic>
 #include "../cpp/driver/microphone_array.h"
-#include "../cpp/driver/everloop.h"
-#include "../cpp/driver/everloop_image.h"
-#include "mqtt/async_client.h"
 #include "mqtt/client.h"
 #include "queue.hpp"
 #include <atomic>
@@ -83,10 +78,33 @@ public:
 void capture_audio(matrix_hal::MicrophoneArray *mic_array,
                    SafeQueue<AudioBlock> &queue, std::atomic_bool &running);
 
-void write_wav_header(
-    std::ofstream &out,
-    uint32_t sample_rate,
-    uint16_t bits_per_sample,
-    uint16_t num_channels,
-    uint32_t data_size
-);
+void write_wav_header(std::ofstream &out, uint32_t sample_rate,
+                      uint16_t bits_per_sample, uint16_t num_channels,
+                      uint32_t data_size);
+
+void send_audio_mqtt_async(matrix_hal::MicrophoneArray *mic_array,
+                           SafeQueue<AudioBlock> &queue,
+                           std::atomic_bool &running,
+                           AsyncMQTTOptions mqtt_options, bool drain);
+
+void send_audio_mqtt_sync(mqtt::client &client,
+                          matrix_hal::MicrophoneArray *mic_array,
+                          AudioBlock block, std::string topic_name, int qos,
+                          bool send_bytes);
+
+bool disconnect_sync_mqtt_client(mqtt::client &client);
+
+bool connect_sync_mqtt_client(mqtt::client &client,
+                              mqtt::connect_options *conn_opts);
+
+void record_all_channels_wav_sync(matrix_hal::MicrophoneArray *mic_array,
+                                  AudioBlock data,
+                                  std::string filename_without_extension);
+
+AudioBlock capture_audio_sync(matrix_hal::MicrophoneArray *mic_array);
+
+void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
+                             matrix_hal::MicrophoneArray *mic_array,
+                             std::atomic_bool &running,
+                             std::string filename_without_extension,
+                             bool drain);
