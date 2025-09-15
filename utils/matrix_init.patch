@@ -1,0 +1,194 @@
+diff --git a/debian/control b/debian/control
+index 38ea188..d0347d1 100644
+--- a/debian/control
++++ b/debian/control
+@@ -3,13 +3,13 @@ Section: embedded
+ Priority: optional
+ Maintainer: MATRIX Labs <info@matrix.one>
+ Build-Depends: debhelper (>= 9)
++Version: 0.1
+ Standards-Version: 3.9.5
+ Homepage: https://github.com/matrix-io/matrix-creator-init
+-
+ Package: matrixio-creator-init
+ Conflicts: matrix-creator-init
+ Replaces: matrix-creator-init
+-Architecture: any
+-Depends: ${shlibs:Depends}, ${misc:Depends},libmatrixio-creator-hal, matrixio-openocd, wiringpi, matrixio-xc3sprog, python-pip
++Architecture: armhf
++#Depends: ${shlibs:Depends}, ${misc:Depends},libmatrixio-creator-hal, matrixio-openocd, wiringpi, matrixio-xc3sprog, python-pip
+ Description: Install scripts that can program the MATRIX Creator FPGA and SAM3 IMU.
+  Install scripts that can program the MATRIX Creator FPGA and SAM3 IMU.
+diff --git a/debian/matrixio-creator-init.install b/debian/matrixio-creator-init.install
+index e9f9c33..21666af 100644
+--- a/debian/matrixio-creator-init.install
++++ b/debian/matrixio-creator-init.install
+@@ -5,19 +5,24 @@ fpga-program.bash usr/share/matrixlabs/matrixio-devices
+ em358-program.bash usr/share/matrixlabs/matrixio-devices
+ matrix-init.bash usr/share/matrixlabs/matrixio-devices
+ radio-init.bash usr/share/matrixlabs/matrixio-devices
+-obj-arm-linux-gnueabihf/cpp/firmware_info usr/share/matrixlabs/matrixio-devices
+-obj-arm-linux-gnueabihf/cpp/fpga_info usr/share/matrixlabs/matrixio-devices
++firmware_info usr/share/matrixlabs/matrixio-devices
++fpga_info usr/share/matrixlabs/matrixio-devices
+ mcu_firmware.version usr/share/matrixlabs/matrixio-devices
+-boot_modifications.txt usr/share/matrixlabs/matrixio-devices/config
+ matrixlabs_edit_settings.py usr/share/matrixlabs/matrixio-devices
+ matrixlabs_remove_console.py usr/share/matrixlabs/matrixio-devices
+ voice.version usr/share/matrixlabs/matrixio-devices
++
++boot_modifications.txt usr/share/matrixlabs/matrixio-devices/config
++
+ matrixio-devices-firmware.service lib/systemd/system
++
+ matrix-creator-reset-jtag usr/bin
+-matrix-mics.conf etc/modules-load.d
+-raspicam.conf etc/modules-load.d
+ voice_esptool usr/bin
+ voice_esp32_enable usr/bin
+ voice_esp32_reset usr/bin
++
++matrix-mics.conf etc/modules-load.d
++raspicam.conf etc/modules-load.d
++
+ matrix_voice.config etc/matrixio-devices
+ matrix_devices.conf etc/modprobe.d
+diff --git a/em358-program.bash b/em358-program.bash
+index 1738f0d..ed4ae70 100755
+--- a/em358-program.bash
++++ b/em358-program.bash
+@@ -50,7 +50,7 @@ function check_flash_status() {
+ 
+ function try_program() {
+   sleep 0.5
+-  RES=$(openocd -f  cfg/em358.cfg 2>&1 | tee -a ${LOG_FILE} | grep wrote | wc -l)
++  RES=$(openocd -f cfg/em358.cfg 2>&1 | tee -a ${LOG_FILE} | grep wrote | wc -l)
+   echo $RES
+ }
+ 
+diff --git a/install.bash b/install.bash
+old mode 100644
+new mode 100755
+index 3c3fab2..4676a09
+--- a/install.bash
++++ b/install.bash
+@@ -1,19 +1,34 @@
+ #!/bin/bash
+ 
+-mkdir /usr/share/matrixlabs/matrixio-devices
+-cp -avr blob cfg sam3-program.bash fpga-program.bash em358-program.bash creator-init.bash radio-init.bash firmware_info mcu_firmware.version matrixlabs_edit_settings.py matrixlabs_remove_console.py 
++# Build binaries
++cmake . && make
++cp -avr cpp/firmware_info cpp/fpga_info .
+ 
+-mkdir /usr/share/matrixlabs/matrixio-devices/config
++mkdir -p /usr/share/matrixlabs/matrixio-devices
++# cp -avr blob cfg sam3-program.bash fpga-program.bash em358-program.bash creator-init.bash radio-init.bash firmware_info mcu_firmware.version matrixlabs_edit_settings.py matrixlabs_remove_console.py /usr/share/matrixlabs/matrixio-devices
++cp -avr blob cfg sam3-program.bash voice.version fpga-program.bash em358-program.bash matrix-init.bash radio-init.bash firmware_info fpga_info mcu_firmware.version matrixlabs_edit_settings.py matrixlabs_remove_console.py  /usr/share/matrixlabs/matrixio-devices
++
++mkdir -p /usr/share/matrixlabs/matrixio-devices/config
+ cp -avr boot_modifications.txt /usr/share/matrixlabs/matrixio-devices/config
+ 
+-cp -avr matrix-creator-firmware.service /lib/systemd/system
+-cp -avr matrix-creator-reset-jtag /usr/bin
+-cp -avr creator-mics.conf /etc/modules-load.d
++# cp -avr matrix-creator-firmware.service /lib/systemd/system
++cp -avr matrixio-devices-firmware.service /lib/systemd/system
++
++# cp -avr matrix-creator-reset-jtag /usr/bin
++cp -avr matrix-creator-reset-jtag voice_esptool voice_esp32_enable voice_esp32_reset /usr/local/bin
++# cp -avr creator-mics.conf /etc/modules-load.d
++cp -avr matrix-mics.conf /etc/modules-load.d
+ cp -avr raspicam.conf /etc/modules-load.d
+-cp -avr asound.conf /etc/
++# cp -avr asound.conf /etc/ # Not in folder
++mkdir -p /etc/matrixio-devices
++cp -avr matrix_voice.config /etc/matrixio-devices
++
++cp -avr matrix_voice.config /etc/matrixio-devices
++cp -avr matrix_devices.conf /etc/modprobe.d
+ 
+ echo "Enabling firmware loading at startup"
+-systemctl enable matrix-creator-firmware
++# systemctl enable matrix-creator-firmware
++systemctl enable matrixio-devices-firmware
+ 
+ # This didn't work due to an unresolved shared library.
+ # Asking users to reboot after installation.
+@@ -26,4 +41,6 @@ cp /boot/config.txt /boot/config.txt.bk && /usr/share/matrixlabs/matrixio-device
+ echo "Disable UART console"
+ /usr/share/matrixlabs/matrixio-devices/matrixlabs_remove_console.py
+ 
++pip install esptool
++
+ echo "Please restart your Raspberry Pi after installation"
+diff --git a/matrixlabs_edit_settings.py b/matrixlabs_edit_settings.py
+index 51f110b..f27e6e1 100755
+--- a/matrixlabs_edit_settings.py
++++ b/matrixlabs_edit_settings.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python3
+ 
+ ' Modify Raspberry Pi settins '
+ 
+@@ -39,18 +39,18 @@ for new_line in read_lines(sys.argv[2]):
+ 
+ for original in ORIGINAL_LINES:
+     if original[0] == 'REMARK':
+-        print original[1]
++        print(original[1])
+     else:
+         key, value = key_and_value(original)
+         if key in KEYS_TO_CHANGE and KEYS_TO_CHANGE[key] == value:
+-            print '{}={}'.format(key, KEYS_TO_CHANGE[key])
++            print('{}={}'.format(key, KEYS_TO_CHANGE[key]))
+             del KEYS_TO_CHANGE[key]
+         else:
+-            print original[1]
++            print(original[1])
+ 
+ if len(KEYS_TO_CHANGE):
+-    print '# Lines added by matrixlabs_edit_settings.py.'
+-    print '# Commented definitions of the settings might be above.'
++    print('# Lines added by matrixlabs_edit_settings.py.')
++    print('# Commented definitions of the settings might be above.')
+ 
+     for key  in sorted(KEYS_TO_CHANGE):
+-        print '{}={}'.format(key, KEYS_TO_CHANGE[key])
++        print('{}={}'.format(key, KEYS_TO_CHANGE[key]))
+diff --git a/matrixlabs_remove_console.py b/matrixlabs_remove_console.py
+index f57d3be..b1a826e 100755
+--- a/matrixlabs_remove_console.py
++++ b/matrixlabs_remove_console.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python2
++#!/usr/bin/python3
+ 
+ f = open('/boot/cmdline.txt', 'r')
+ parameters = f.read().split(" ")
+diff --git a/sam3-program.bash b/sam3-program.bash
+index aa2458a..abbc686 100755
+--- a/sam3-program.bash
++++ b/sam3-program.bash
+@@ -58,7 +58,7 @@ function try_program() {
+   reset_mcu
+   sleep 0.1
+ 
+-  RES=$(openocd -f cfg/sam3s_rpi_sysfs.cfg 2>&1 | tee ${LOG_FILE} | grep wrote | wc -l)
++  RES=$(openocd -f ./cfg/sam3s_rpi_sysfs.cfg 2>&1 | tee ${LOG_FILE} | grep wrote | wc -l)
+   echo $RES
+   
+   sleep 0.5
+@@ -73,7 +73,7 @@ function enable_program() {
+ }
+ 
+ function check_firmware() {
+- COMPARE_VERSION=$(diff <(./firmware_info | grep MCU) <(cat mcu_firmware.version)|wc -l)
++ COMPARE_VERSION=$(diff <(./firmware_info | grep MCU) <(cat ./mcu_firmware.version)|wc -l)
+ 
+  if [ "$COMPARE_VERSION" == "0" ];then
+   echo 1
+diff --git a/uninstall.bash b/uninstall.bash
+old mode 100644
+new mode 100755
