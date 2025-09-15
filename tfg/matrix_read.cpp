@@ -27,7 +27,7 @@ using namespace std::chrono_literals;
 
 // Parámetros CLI
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
-DEFINE_int32(duration, 5, "Segundos a grabar (0=continuo)");
+DEFINE_int32(duration, 180, "Segundos a grabar");
 DEFINE_int32(gain, 3, "Ganancia del micrófono (dB)");
 DEFINE_string(filename, "beamformed_output.wav", "The filename of the beamformed audio");
 
@@ -166,7 +166,6 @@ int main(int argc, char *argv[])
         "Parámetros:\n"
         "  --frequency : Frecuencia de muestreo en Hz (por defecto: 16000)\n"
         "  --duration  : Duración en segundos de la grabación (por defecto: 5)\n"
-        "                   Si se pone duration 0 el programa correrá de forma continua\n"
         "  --filename  : The filename of the beamformed audio\n "
         "                   default: beamformed_output.wav\n"
         "  --gain      : Ganancia del micrófono en dB, 3 para ganancia por defecto (por defecto: 3)\n");
@@ -251,8 +250,11 @@ int main(int argc, char *argv[])
         drain_queue
     );
 
-    std::this_thread::sleep_for(5s);
+    std::this_thread::sleep_for(FLAGS_duration * 1s);
     queue.stop_async();
+
+    capture_thread.join();
+    processing_thread.join();
 
     int retry_count = 5;
     while (!client.get_pending_delivery_tokens().empty()) {
@@ -276,9 +278,6 @@ int main(int argc, char *argv[])
         std::cerr << "Error al desconectar MQTT: " << exc.what() << std::endl;
     }
 
-    // Esperar hilos
-    capture_thread.join();
-    processing_thread.join();
 
     return 0;
 }
