@@ -18,59 +18,107 @@
 #include <wiringPi.h>
 #include <iostream>
 #include <string>
+#include <condition_variable>
 
 #include "cpp/driver/creator_memory_map.h"
 #include "cpp/driver/uart_control.h"
 
-namespace matrix_hal {
+static std::mutex irq_m;
+static std::condition_variable irq_cv;
 
-const uint16_t kUartIRQ = 5;
-const uint16_t UART_BUSY = 0x0010;
+void uart_irq_callback(void) { irq_cv.notify_all(); }
 
-uint16_t UartControl::GetUartValue() {
-  if (!bus_) return false;
-  uint16_t value;
-  if (waitForInterrupt(kUartIRQ, -1) > 0) {
-    bus_->Read(kUartBaseAddress + 1, &value);
-    return value;
-  }
-  return false;
-}
+namespace matrix_hal
+{
 
-bool UartControl::GetUartUCR() {
-  if (!bus_) return false;
-  uint16_t value;
-  bus_->Read(kUartBaseAddress, &value);
-  ucr_ = value;
-  return true;
-}
+  const uint16_t kUartIRQ = 5;
+  const uint16_t UART_BUSY = 0x0010;
 
-bool UartControl::SetUartValue(uint16_t data) {
-  if (!bus_) return false;
-  do {
-    GetUartUCR();
-  } while (ucr_ & UART_BUSY);
-  bus_->Write(kUartBaseAddress + 1, data);
-  return true;
-}
-
-UartControl::UartControl() : ucr_(0x0) {}
-
-void UartControl::Setup(MatrixIOBus *bus) {
-  MatrixDriver::Setup(bus);
-  // TODO(andres.calderon@admobilize.com): avoid systems calls
-  // FIXME: Remove the gpio command, it doesn't work on new kernels
-  // It can be modeled after the microphones code, by using a 
-  // condition variable and firing an interrupt.
-  // See microphone_array.cpp
-  int status = std::system("gpio edge 5 rising");
-  if (status != 0) {
-    std::cout << "Error executing gpio command" << std::endl;
-
+  /* // Old code using deprecated features
+  uint16_t UartControl::GetUartValue()
+  {
+    if (!bus_)
+      return false;
+    uint16_t value;
+    // Wait forever, so from there this function returns false if there is an error.
+    if (waitForInterrupt(kUartIRQ, -1) > 0)
+    {
+      bus_->Read(kUartBaseAddress + 1, &value);
+      return value;
+    }
+    return false;
   }
 
-  wiringPiSetupSys();
+  void UartControl::Setup(MatrixIOBus *bus)
+  {
+    MatrixDriver::Setup(bus);
+    // TODO(andres.calderon@admobilize.com): avoid systems calls
+    // FIXME: Remove the gpio command, it doesn't work on new kernels
+    // It can be modeled after the microphones code, by using a
+    // condition variable and firing an interrupt.
+    // See microphone_array.cpp
+    int status = std::system("gpio edge 5 rising");
+    if (status != 0)
+    {
+      std::cout << "Error executing gpio command" << std::endl;
+    }
 
-  pinMode(kUartIRQ, INPUT);
-}
-}  // namespace matrix_hal
+    wiringPiSetupSys();
+
+    pinMode(kUartIRQ, INPUT);
+  }
+  */
+
+  uint16_t UartControl::GetUartValue()
+  {
+    if (!bus_)
+    {
+      return false;
+    }
+    uint16_t value;
+
+    irq_cv.wait(lock_);
+
+    // Return the read value if there is a sucefull read.
+    if (bus_->Read(kUartBaseAddress + 1, &value))
+    {
+      return value;
+    }
+    // Return false if thre is an error.
+    return false;
+  }
+
+  bool UartControl::GetUartUCR()
+  {
+    if (!bus_)
+      return false;
+    uint16_t value;
+    bus_->Read(kUartBaseAddress, &value);
+    ucr_ = value;
+    return true;
+  }
+
+  bool UartControl::SetUartValue(uint16_t data)
+  {
+    if (!bus_)
+      return false;
+    do
+    {
+      GetUartUCR();
+    } while (ucr_ & UART_BUSY);
+    bus_->Write(kUartBaseAddress + 1, data);
+    return true;
+  }
+
+  UartControl::UartControl() : lock_(irq_m), ucr_(0x0) {}
+
+  void UartControl::Setup(MatrixIOBus *bus)
+  {
+    MatrixDriver::Setup(bus);
+
+    wiringPiSetupSys();
+
+    pinMode(kUartIRQ, INPUT);
+    wiringPiISR(kUartIRQ, INT_EDGE_BOTH, &uart_irq_callback);
+  }
+} // namespace matrix_hal
