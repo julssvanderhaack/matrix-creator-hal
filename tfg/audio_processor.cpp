@@ -312,11 +312,12 @@ void record_all_channels_wav_sync(matrix_hal::MicrophoneArray *mic_array,
         reinterpret_cast<const char *>(initial_data[i].data()),
         initial_data[i].size() * sizeof(char));
 
-    write_wav_header(filehandles_out[i], frequency, BITS_PER_SAMPLE,
-                     WAV_CHANNELS,
-                     initial_size_with_header[i] - WAV_HEADER_LEN);
-    std::vector<int16_t> ch_audio(data.samples[i]);
-    filehandles_out[i].write(reinterpret_cast<const char *>(ch_audio.data()),
-                             ch_audio.size() * sizeof(int16_t));
+    std::vector<int16_t> new_audio{data.samples[i]};
+    uint32_t new_audio_len = new_audio.size() * sizeof(int16_t);
+    write_wav_header(
+        filehandles_out[i], frequency, BITS_PER_SAMPLE, WAV_CHANNELS,
+        new_audio_len + initial_size_with_header[i] - WAV_HEADER_LEN);
+    filehandles_out[i].write(reinterpret_cast<const char *>(new_audio.data()),
+                             new_audio_len);
   }
 }
