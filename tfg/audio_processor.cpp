@@ -129,7 +129,7 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
     // it's empty
     int ret_pop = queue.wait_pop(block);
     if (ret_pop == 0) {
-        break; // We are not running and we have no more data in the queue.
+        continue; // We are not running and we have no more data in the queue.
     }
 
     uint32_t block_size = block.samples[0].size();
