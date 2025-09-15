@@ -1,3 +1,8 @@
+// FILE   : test_mqtt_sync.cpp
+// AUTHOR : Julio Albisua
+// INFO   : testcases for mqtt package sending through  syncronous 
+//          audio capture functions
+
 #include "../cpp/driver/matrixio_bus.h"
 #include "../cpp/driver/microphone_array.h"
 #include "../cpp/driver/microphone_core.h"
@@ -5,14 +10,14 @@
 #include "mqtt/client.h"
 
 int main() {
-  auto duration = 5;
+  auto duration = 60;
   auto frequency = 16000;
   auto gain = 0;
 
   std::string SERVER_IP = "tcp://localhost";
   std::string SERVER_PORT = "1883";
   std::string CLIENT_ID = "AudioPublisher";
-  std::string BASE_TOPIC_NAME = "test_mqtt";
+  std::string BASE_TOPIC_NAME = "audio/channel";
 
   std::cerr << "Testing mqtt audio send sync with: " << frequency
             << " Hz, gain = " << gain << " during " << duration << " s "

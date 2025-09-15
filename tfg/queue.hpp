@@ -1,6 +1,10 @@
+// FILE   : queue.hpp
+// AUTHOR : Julio Albisua
+// INFO   : SafeQueue utils  with some special functions like wait_pop
+//          Designed for multithreading and trying to be a package lossless tool
+
 #ifndef UTILS_HPP
 #define UTILS_HPP
-
 #include <atomic>
 #include <vector>
 #include <queue>

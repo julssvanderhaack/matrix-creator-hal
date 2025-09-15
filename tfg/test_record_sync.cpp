@@ -1,3 +1,8 @@
+// FILE   : test_record_sync.cpp
+// AUTHOR : Julio Albisua
+// INFO   : captures the audio of all microphones 
+// 	    saves it in the volatile memory	   
+
 #include "../cpp/driver/matrixio_bus.h"
 #include "../cpp/driver/microphone_array.h"
 #include "../cpp/driver/microphone_core.h"
