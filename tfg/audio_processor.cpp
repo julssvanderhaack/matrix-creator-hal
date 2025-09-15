@@ -9,12 +9,10 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
-#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <locale>
 #include <mqtt/client.h>
 #include <string>
 #include <thread>
@@ -76,7 +74,6 @@ void write_wav_header(
     }
 }
 
-// Captura multicanal
 void capture_audio(matrix_hal::MicrophoneArray *mic_array,
                    SafeQueue<AudioBlock> &queue, std::atomic_bool &running) {
   const uint32_t BLOCK_SIZE = mic_array->NumberOfSamples();
@@ -135,7 +132,6 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
         break; // We are not running and we have no more data in the queue.
     }
 
-
     uint32_t block_size = block.samples[0].size();
     std::vector<std::vector<int16_t>> audios(
         NUM_CHANNELS_, std::vector<int16_t>(block_size, 0));
@@ -155,7 +151,7 @@ void record_all_channels_wav(SafeQueue<AudioBlock> &queue,
   }
 }
 
-std::vector<std::vector<int16_t>> capture_audio_sync(matrix_hal::MicrophoneArray *mic_array) {
+AudioBlock capture_audio_sync(matrix_hal::MicrophoneArray *mic_array) {
     const uint32_t BLOCK_SIZE = mic_array->NumberOfSamples();
     const uint16_t CHANNELS = mic_array->Channels();
 
@@ -168,7 +164,7 @@ std::vector<std::vector<int16_t>> capture_audio_sync(matrix_hal::MicrophoneArray
         }
     }
 
-    return block.samples;
+    return block;
 }
 
 void record_all_channels_wav_sync(matrix_hal::MicrophoneArray *mic_array,
@@ -275,7 +271,7 @@ bool disconnect_sync_mqtt_client(mqtt::client &client) {
   }
 }
 
-void send_mqtt_sync(mqtt::client &client,
+void send_audio_mqtt_sync(mqtt::client &client,
                     matrix_hal::MicrophoneArray *mic_array, AudioBlock block,
                     std::string topic_name, int qos = 1,
                     bool send_bytes = true) {
