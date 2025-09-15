@@ -6,7 +6,8 @@
 #include <iostream>
 #include <vector>
 #include <thread>
-#include <chrono>
+#include <cmath>
+#include <fstream>
 #include <gflags/gflags.h>
 #include <mqtt/async_client.h>
 
@@ -18,22 +19,11 @@
 
 #include "audio_processor.hpp"
 #include "queue.hpp"
-#include <chrono>
-#include <cmath>
-#include <fstream>
+
+using namespace std::chrono_literals;
 
 #define SPEED_OF_SOUND 343.0f // Velocidad del sonido (m/s)
 #define MIC_DISTANCE 0.04f    // Distancia entre micrófonos adyacentes (m)
-
-// Configuración de MQTT
-const std::string SERVER_IP = "tcp://localhost";
-const std::string SERVER_PORT = "1883";
-const std::string CLIENT_ID = "AudioPublisher";
-const std::string BEAMFORMED_TOPIC = "audio/beamformed";
-
-mqtt::async_client client(SERVER_IP + ":" + SERVER_PORT, CLIENT_ID);
-mqtt::connect_options mqtt_connection_options;
-std::atomic<bool> running(true);
 
 // Parámetros CLI
 DEFINE_int32(frequency, 16000, "Frecuencia de muestreo (Hz)");
@@ -52,16 +42,17 @@ float normalize_angle(float angle_deg)
 // Delay-and-Sum con barrido de ángulos + Everloop
 void process_beamforming(
     SafeQueue<AudioBlock> &queue,
+    mqtt::async_client& client,
+    std::atomic_bool& running,
     uint32_t frequency,
-    int duration,
     matrix_hal::Everloop *everloop,
     matrix_hal::EverloopImage *image,
-    std::string filename)
+    std::string filename,
+    std::string topic,
+    bool drain = true)
 {
     const uint16_t num_channels = 8;
     const uint16_t bits_per_sample = 16;
-    uint32_t estimated_samples = frequency * duration;
-    uint32_t data_size = estimated_samples * bits_per_sample / 8;
 
     std::ofstream outfile(filename, std::ios::binary);
     if (!outfile.is_open())
@@ -70,18 +61,17 @@ void process_beamforming(
         running = false;
         return;
     }
-    write_wav_header(outfile, frequency, bits_per_sample, 1, data_size);
 
     const float RADIUS = MIC_DISTANCE / (2.0f * sinf(M_PI / num_channels));
     const float ANGLE_MIN = -180.0f, ANGLE_MAX = 180.0f, ANGLE_STEP = 5.0f;
     const int num_leds = image->leds.size();
 
-    while (running)
+    uint32_t wav_data_len = 0;
+    while (running || (drain && !queue.empty()))
     {
         AudioBlock block;
-        if (!queue.pop(block))
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        int ret = queue.wait_pop(block);
+        if (ret == 0) {
             continue;
         }
 
@@ -129,24 +119,26 @@ void process_beamforming(
         std::cout << "DOA Calculada: " << normalize_angle(best_angle - ANGLE_CORRECTION) << " grados\n";
 
         // ——— Everloop: limpia, calcula LED y enciende —
-        for (auto &led : image->leds)
+        for (auto &led : image->leds) {
             led.red = led.green = led.blue = 0;
+        }
 
         float LED_CORRECTION = -110.0f;
         float angle01 = (normalize_angle(best_angle + LED_CORRECTION) + 180.0f) / 360.0f;
         int pin = static_cast<int>(round(angle01 * (num_leds - 1)));
         image->leds[pin].green = 30;
-
         everloop->Write(image);
 
         // ——— Guarda WAV y publica MQTT —
+        wav_data_len = wav_data_len + best_output.size() * sizeof(int16_t);
+        write_wav_header(outfile, frequency, bits_per_sample, 1, wav_data_len);
         outfile.write(
             reinterpret_cast<const char *>(best_output.data()),
             best_output.size() * sizeof(int16_t));
 
-        // Old MQTT code
+        // Send message by mqtt
         mqtt::message_ptr pubmsg = mqtt::make_message(
-            BEAMFORMED_TOPIC,
+            topic,
             reinterpret_cast<const char *>(best_output.data()),
             best_output.size() * sizeof(int16_t));
         pubmsg->set_qos(1);
@@ -159,17 +151,6 @@ void process_beamforming(
             std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
         }
 
-        /*for (auto &elem : best_output) {
-            std::string st = std::to_string(elem);
-            mqtt::message_ptr pubmsg = mqtt::make_message(BEAMFORMED_TOPIC, st);
-            pubmsg->set_qos(1);
-            try {
-                client.publish(pubmsg);
-            } catch (const mqtt::exception &exc) {
-                std::cerr << "Error publicando MQTT: " << exc.what() << std::endl;
-            }
-
-        }*/
     }
 
     outfile.close();
@@ -203,8 +184,9 @@ int main(int argc, char *argv[])
 
     // Inicializar bus MATRIX
     matrix_hal::MatrixIOBus bus;
-    if (!bus.Init())
+    if (!bus.Init()) {
         return 1;
+    }
 
     // Mic array
     matrix_hal::MicrophoneArray mic_array(false);
@@ -212,17 +194,29 @@ int main(int argc, char *argv[])
     mic_array.Setup(&bus);
     mic_array.SetSamplingRate(FLAGS_frequency);
 
-    if (FLAGS_gain > 0)
+    if (FLAGS_gain > 0) {
         mic_array.SetGain(FLAGS_gain);
+    }
 
     mic_array.ShowConfiguration();
     mic_core.Setup(&bus);
+
+    // Configuración de MQTT
+    const std::string SERVER_IP = "tcp://localhost";
+    const std::string SERVER_PORT = "1883";
+    const std::string CLIENT_ID = "AudioPublisher";
+    const std::string BEAMFORMED_TOPIC = "audio/beamformed";
+    const int time_wait_mqtt_ms = 100;
+    const bool drain_queue = true;
+
+    mqtt::async_client client(SERVER_IP + ":" + SERVER_PORT, CLIENT_ID);
+    mqtt::connect_options mqtt_connection_options;
 
     // Conectar MQTT
     mqtt_connection_options.set_clean_session(true);
     try
     {
-        client.connect(mqtt_connection_options)->wait();
+        client.connect(mqtt_connection_options)->wait_for(time_wait_mqtt_ms);
         std::cout << "Conectado al broker MQTT." << std::endl;
     }
     catch (const mqtt::exception &exc)
@@ -238,38 +232,42 @@ int main(int argc, char *argv[])
 
     // Cola de audio
     SafeQueue<AudioBlock> queue;
-    running = true;
+    queue.start_async();
     // Hilo de captura
     std::thread capture_thread(capture_audio, &mic_array, std::ref(queue),
-                               std::ref(running));
+                               std::ref(queue.run_async));
 
     // Hilo de beamforming + Everloop
     std::thread processing_thread(
         process_beamforming,
         std::ref(queue),
+        std::ref(client),
+        std::ref(queue.run_async),
         FLAGS_frequency,
-        FLAGS_duration,
         &everloop,
         &image,
-        FLAGS_filename);
+        FLAGS_filename,
+        BEAMFORMED_TOPIC,
+        drain_queue
+    );
 
-    using namespace std::chrono_literals;
     std::this_thread::sleep_for(5s);
-    running = false;
-    // Esperar hilos
-    capture_thread.join();
-    processing_thread.join();
+    queue.stop_async();
 
     // Desconectar MQTT
     try
     {
-        client.disconnect()->wait();
+        client.disconnect()->wait_for(time_wait_mqtt_ms * 1ms);
         std::cout << "Desconectado del broker MQTT." << std::endl;
     }
     catch (const mqtt::exception &exc)
     {
         std::cerr << "Error al desconectar MQTT: " << exc.what() << std::endl;
     }
+
+    // Esperar hilos
+    capture_thread.join();
+    processing_thread.join();
 
     return 0;
 }
