@@ -13,6 +13,7 @@ add_compile_options(-std=c++11)
 # Enable extra warnings. Not needed.
 include (../../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Threads)
 
@@ -43,41 +44,41 @@ set(matrix_creator_hal_src
 )
 
 add_library(matrix_creator_hal SHARED ${matrix_creator_hal_src})
-  set_property(TARGET matrix_creator_hal PROPERTY CXX_STANDARD 11)
-  target_link_libraries(matrix_creator_hal ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_THREAD_LIBS_INIT})
-  target_link_libraries(matrix_creator_hal ${FFTW_LIBRARIES})
-  target_link_libraries(matrix_creator_hal ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+set_property(TARGET matrix_creator_hal PROPERTY CXX_STANDARD 11)
+target_link_libraries(matrix_creator_hal ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(matrix_creator_hal ${FFTW_LIBRARIES})
+target_link_libraries(matrix_creator_hal ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 
 add_library(matrix_creator_hal_static STATIC ${matrix_creator_hal_src})
-  set_property(TARGET matrix_creator_hal_static PROPERTY CXX_STANDARD 11)
-  set_target_properties(matrix_creator_hal_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  target_link_libraries(matrix_creator_hal_static ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_THREAD_LIBS_INIT})
-  target_link_libraries(matrix_creator_hal_static ${FFTW_LIBRARIES})
-  target_link_libraries(matrix_creator_hal_static ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
+set_property(TARGET matrix_creator_hal_static PROPERTY CXX_STANDARD 11)
+set_target_properties(matrix_creator_hal_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(matrix_creator_hal_static ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(matrix_creator_hal_static ${FFTW_LIBRARIES})
+target_link_libraries(matrix_creator_hal_static ${WIRINGPI_LIB} ${WIRINGPI_DEV_LIB} ${CRYPT_LIB})
 
 set (matrix_creator_hal_headers
   circular_queue.h
-  creator_memory_map.h  
-  dummy_data.h          
-  dummy_sensor.h        
-  everloop.h        
-  everloop_image.h  
-  fw_data.h          
-  gpio_control.h    
-  humidity_data.h    
-  humidity_sensor.h  
-  imu_data.h         
-  imu_sensor.h        
-  matrix_driver.h     
+  creator_memory_map.h
+  dummy_data.h
+  dummy_sensor.h
+  everloop.h
+  everloop_image.h
+  fw_data.h
+  gpio_control.h
+  humidity_data.h
+  humidity_sensor.h
+  imu_data.h
+  imu_sensor.h
+  matrix_driver.h
   mcu_firmware.h
-  microphone_array.h 
+  microphone_array.h
   microphone_core.h
-  microphone_core_fir.h 
+  microphone_core_fir.h
   microphone_array_location.h
   pressure_data.h
   pressure_sensor.h
-  uv_data.h             
-  uv_sensor.h       
+  uv_data.h
+  uv_sensor.h
   matrixio_bus.h
   bus.h
   bus_direct.h

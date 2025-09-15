@@ -4,6 +4,7 @@ project(${SKBUILD_PROJECT_NAME} LANGUAGES CXX)
 # Enable extra warnings. Not needed but keeps consistency
 include (../../../cmake/FatalWarnings.cmake)
 ADM_EXTRA_WARNINGS()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(../../../cpp/driver driver)
 
